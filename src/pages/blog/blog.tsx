@@ -1,7 +1,9 @@
 import { Navbar } from "@/components/layout/navbar";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Clock, ArrowRight, Tag } from "lucide-react";
+import { Calendar, Clock, ArrowRight, Tag, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useState, useEffect } from "react";
 
 // Dummy data for blog posts
 const BLOG_POSTS = [
@@ -44,27 +46,64 @@ const BLOG_POSTS = [
 ];
 
 export function BlogPage() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
   return (
-    <div className="dark min-h-screen bg-background text-foreground">
-      <Navbar className="fixed top-0 left-0 right-0 z-50 border-b border-white/10 bg-black/50 backdrop-blur-md" />
+    <div className="min-h-screen bg-background">
+      {/* Floating Navbar */}
+      <Navbar className="fixed top-4 left-4 right-4 z-50 rounded-2xl shadow-lg shadow-black/5" />
       
-      <main className="container mx-auto px-4 pt-24 pb-12">
-        <div className="max-w-4xl mx-auto space-y-12">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-accent/5 pointer-events-none" />
+
+      <main className="relative pt-28 pb-16 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-4xl mx-auto">
           
           {/* Header */}
-          <div className="space-y-4 text-center md:text-left">
-            <h1 className="text-4xl font-bold tracking-tight text-white">Blog</h1>
-            <p className="text-xl text-zinc-400 max-w-2xl">
-              Thoughts, tutorials, and insights about web development, design, and technology.
-            </p>
+          <div 
+            className={cn(
+              "mb-12 transition-all duration-700 ease-out",
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            )}
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 rounded-xl bg-accent/10 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-accent" />
+              </div>
+              <div>
+                <h1 
+                  className="text-3xl sm:text-4xl font-bold text-foreground tracking-tight"
+                  style={{ fontFamily: "'Outfit', sans-serif" }}
+                >
+                  Blog
+                </h1>
+                <p className="text-muted-foreground text-sm">
+                  Thoughts, tutorials, and insights about web development
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Blog Grid */}
-          <div className="grid gap-6 md:grid-cols-2">
+          <div 
+            className={cn(
+              "grid gap-6 md:grid-cols-2",
+              "transition-all duration-700 delay-150 ease-out",
+              isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            )}
+          >
             {BLOG_POSTS.map((post) => (
-              <Card key={post.id} className="bg-zinc-900/50 border-white/10 backdrop-blur-sm flex flex-col hover:border-white/20 transition-colors group">
+              <Card 
+                key={post.id} 
+                className="bg-card/80 backdrop-blur-sm border-border hover:border-accent/30 hover:shadow-lg hover:shadow-accent/5 transition-all duration-300 flex flex-col group cursor-pointer"
+              >
                 <CardHeader>
-                  <div className="flex items-center gap-4 text-xs text-zinc-500 mb-2">
+                  <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
                     <div className="flex items-center gap-1">
                       <Calendar className="w-3 h-3" />
                       <span>{new Date(post.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
@@ -74,10 +113,10 @@ export function BlogPage() {
                       <span>{post.readTime}</span>
                     </div>
                   </div>
-                  <CardTitle className="text-xl text-white group-hover:text-primary transition-colors line-clamp-2">
+                  <CardTitle className="text-xl text-foreground group-hover:text-accent transition-colors line-clamp-2">
                     {post.title}
                   </CardTitle>
-                  <CardDescription className="text-zinc-400 line-clamp-3">
+                  <CardDescription className="text-muted-foreground line-clamp-3">
                     {post.excerpt}
                   </CardDescription>
                 </CardHeader>
@@ -85,7 +124,7 @@ export function BlogPage() {
                 <CardContent className="flex-grow">
                   <div className="flex flex-wrap gap-2 mt-auto">
                     {post.tags.map(tag => (
-                      <span key={tag} className="inline-flex items-center px-2 py-1 rounded-md bg-white/5 text-xs text-zinc-400 border border-white/5">
+                      <span key={tag} className="inline-flex items-center px-2 py-1 rounded-md bg-secondary text-xs text-muted-foreground border border-border">
                         <Tag className="w-3 h-3 mr-1" />
                         {tag}
                       </span>
@@ -94,7 +133,7 @@ export function BlogPage() {
                 </CardContent>
 
                 <CardFooter className="pt-0">
-                  <Button variant="ghost" className="w-full justify-between text-zinc-300 hover:text-white hover:bg-white/5 group/btn">
+                  <Button variant="ghost" className="w-full justify-between text-foreground hover:text-accent hover:bg-accent/5 group/btn cursor-pointer">
                     Read Article
                     <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover/btn:translate-x-1" />
                   </Button>
