@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Home, Image, Video, FileText, BookOpen, MessageCircle, Menu, X } from "lucide-react";
+import { Home, Image, Video, FileText, BookOpen, MessageCircle, Menu, X, StickyNote } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
@@ -9,6 +9,7 @@ const navItems = [
   { href: "/photos", label: "Photos", icon: Image },
   { href: "/videos", label: "Videos", icon: Video },
   { href: "/books", label: "Books", icon: BookOpen },
+  { href: "/board", label: "Board", icon: StickyNote },
   { href: "/chat", label: "Chat", icon: MessageCircle },
 ];
 

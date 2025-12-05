@@ -6,6 +6,8 @@ import { AboutPage } from "./pages/about/about.tsx";
 import { BlogPage } from "./pages/blog/blog.tsx";
 import { PhotosPage } from "./pages/photos/photos.tsx";
 import { AdminPage } from "./pages/admin/admin.tsx";
+import { BooksPage } from "./pages/books/books.tsx";
+import { BoardPage } from "./pages/board/board.tsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -17,6 +19,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
         <Route path="/blog" element={<BlogPage />} />
         <Route path="/photos" element={<PhotosPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/books" element={<BooksPage />} />
+        <Route path="/board" element={<BoardPage />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>

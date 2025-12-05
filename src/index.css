@@ -1,6 +1,25 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  --color-border: hsl(214 32% 91%);
+  --color-input: hsl(214 32% 91%);
+  --color-ring: hsl(199 89% 48%);
+  --color-background: hsl(0 0% 99%);
+  --color-foreground: hsl(240 10% 10%);
+  --color-primary: hsl(240 6% 15%);
+  --color-primary-foreground: hsl(0 0% 100%);
+  --color-secondary: hsl(210 40% 96%);
+  --color-secondary-foreground: hsl(240 6% 15%);
+  --color-muted: hsl(210 40% 96%);
+  --color-muted-foreground: hsl(215 16% 47%);
+  --color-accent: hsl(199 89% 48%);
+  --color-accent-foreground: hsl(0 0% 100%);
+  --color-destructive: hsl(0 84% 60%);
+  --color-destructive-foreground: hsl(0 0% 100%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(240 10% 10%);
+  --radius: 0.75rem;
+}
 
 @layer base {
   :root {
@@ -26,19 +45,27 @@
   }
 
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
   }
 
   html {
-    @apply scroll-smooth;
+    scroll-behavior: smooth;
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     font-family: 'Work Sans', system-ui, sans-serif;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'Outfit', system-ui, sans-serif;
   }
 }
@@ -47,18 +74,24 @@
 
 /* Hotspot glow animation */
 @keyframes hotspot-glow {
-  0%, 100% {
-    filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.4));
+
+  0%,
+  100% {
+    filter: drop-shadow(0 0 18px rgba(37, 99, 235, 0.4));
   }
+
   50% {
     filter: drop-shadow(0 0 20px rgba(37, 99, 235, 0.8));
   }
 }
 
 @keyframes hotspot-pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     stroke-opacity: 0.6;
   }
+
   50% {
     stroke-opacity: 1;
   }
@@ -70,9 +103,12 @@
 
 /* Floating animation for UI elements */
 @keyframes float {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-8px);
   }
@@ -88,6 +124,7 @@
     opacity: 0;
     transform: translateY(20px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -99,15 +136,26 @@
 }
 
 /* Staggered animation delays */
-.animation-delay-100 { animation-delay: 100ms; }
-.animation-delay-200 { animation-delay: 200ms; }
-.animation-delay-300 { animation-delay: 300ms; }
-.animation-delay-500 { animation-delay: 500ms; }
+.animation-delay-100 {
+  animation-delay: 100ms;
+}
+
+.animation-delay-200 {
+  animation-delay: 200ms;
+}
+
+.animation-delay-300 {
+  animation-delay: 300ms;
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
 
 /* Smooth image loading */
-img {
+/* img {
   transition: opacity 0.3s ease;
-}
+} */
 
 /* img[loading] {
   opacity: 0;
@@ -119,12 +167,15 @@ img:not([loading]) {
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
+
+  *,
+  *::before,
+  *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
-  
+
   .animate-float,
   .animate-fade-in-up,
   .hotspot-glow {
@@ -133,6 +184,11 @@ img:not([loading]) {
 }
 
 /* Focus visible for accessibility */
-.focus-ring {
-  @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background;
+.focus-ring:focus {
+  outline: none;
+}
+
+.focus-ring:focus-visible {
+  outline: 2px solid hsl(var(--accent));
+  outline-offset: 2px;
 }

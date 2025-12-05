@@ -9,6 +9,9 @@ export default {
   ],
   theme: {
     extend: {
+      maxWidth: {
+        '7xl': '90rem', // Changes max-w-7xl to 90rem
+      },
       fontFamily: {
         sans: ['Work Sans', 'system-ui', 'sans-serif'],
         heading: ['Outfit', 'system-ui', 'sans-serif'],
