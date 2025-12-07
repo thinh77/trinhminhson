@@ -216,11 +216,52 @@ export function BoardPage() {
       {/* Floating Navbar */}
       <Navbar className="fixed top-4 left-4 right-4 z-50 rounded-2xl shadow-lg shadow-black/5" />
 
+      {/* Board header - fixed */}
+      <div 
+        className={cn(
+          "fixed top-24 left-4 right-4 flex items-center justify-between z-30",
+          "transition-all duration-700",
+          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-xl bg-white shadow-md">
+            <StickyNote className="w-6 h-6 text-amber-500" />
+          </div>
+          <div>
+            <h1 
+              className="text-xl font-bold text-foreground"
+              style={{ fontFamily: "'Outfit', sans-serif" }}
+            >
+              Bảng Ghi Chú
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              {notes.length} ghi chú
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCreating(true)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl",
+              "bg-accent text-accent-foreground shadow-md",
+              "hover:bg-accent/90 transition-colors duration-200",
+              "cursor-pointer"
+            )}
+          >
+            <Plus className="w-5 h-5" />
+            <span className="hidden sm:inline text-sm font-medium">Thêm ghi chú</span>
+          </button>
+        </div>
+      </div>
+
       {/* Board area */}
       <div 
         ref={boardRef}
         className={cn(
-          "flex-1 relative mt-20 overflow-hidden",
+          "flex-1 relative mt-20 overflow-auto",
           "bg-[linear-gradient(#e5e5e5_1px,transparent_1px),linear-gradient(90deg,#e5e5e5_1px,transparent_1px)]",
           "bg-[size:20px_20px]"
         )}
@@ -228,71 +269,25 @@ export function BoardPage() {
         onMouseUp={handleDragEnd}
         onMouseLeave={handleDragEnd}
       >
-        {/* Board header */}
+        {/* Inner container for scrollable content */}
         <div 
-          className={cn(
-            "absolute top-4 left-4 right-4 flex items-center justify-between z-10",
-            "transition-all duration-700",
-            isLoaded ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-4"
-          )}
+          className="relative"
+          style={{ 
+            minWidth: Math.max(800, ...notes.map(n => n.x + 250)),
+            minHeight: Math.max(600, ...notes.map(n => n.y + 250)),
+          }}
         >
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-white shadow-md">
-              <StickyNote className="w-6 h-6 text-amber-500" />
-            </div>
-            <div>
-              <h1 
-                className="text-xl font-bold text-foreground"
-                style={{ fontFamily: "'Outfit', sans-serif" }}
-              >
-                Bảng Ghi Chú
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {notes.length} ghi chú
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* {notes.length > 0 && (
-              <button
-                onClick={handleClearAll}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl",
-                  "bg-white text-muted-foreground shadow-md",
-                  "hover:bg-red-50 hover:text-red-600 transition-colors duration-200",
-                  "cursor-pointer"
-                )}
-              >
-                <Trash2 className="w-4 h-4" />
-                <span className="hidden sm:inline text-sm font-medium">Xóa tất cả</span>
-              </button>
-            )} */}
-            <button
-              onClick={() => setIsCreating(true)}
-              className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl",
-                "bg-accent text-accent-foreground shadow-md",
-                "hover:bg-accent/90 transition-colors duration-200",
-                "cursor-pointer"
-              )}
-            >
-              <Plus className="w-5 h-5" />
-              <span className="hidden sm:inline text-sm font-medium">Thêm ghi chú</span>
-            </button>
-          </div>
-        </div>
 
         {/* Empty state */}
         {notes.length === 0 && !isCreating && (
           <div 
             className={cn(
-              "absolute inset-0 flex flex-col items-center justify-center",
+              "fixed inset-0 flex flex-col items-center justify-center pt-32 pointer-events-none",
               "transition-all duration-700 delay-200",
               isLoaded ? "opacity-100 scale-100" : "opacity-0 scale-95"
             )}
           >
-            <div className="p-6 rounded-3xl bg-white/80 backdrop-blur-sm shadow-xl text-center max-w-md">
+            <div className="p-6 rounded-3xl bg-white/80 backdrop-blur-sm shadow-xl text-center max-w-md pointer-events-auto">
               <div className="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-amber-100 to-amber-200 flex items-center justify-center">
                 <Sparkles className="w-10 h-10 text-amber-500" />
               </div>
@@ -414,6 +409,7 @@ export function BoardPage() {
             />
           </div>
         ))}
+        </div>
       </div>
 
       {/* Create note modal */}
