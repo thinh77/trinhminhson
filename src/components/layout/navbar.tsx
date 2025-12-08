@@ -3,9 +3,11 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
     Home, BookOpen, MessageCircle, Menu, X,
     ChevronDown, ChevronRight, Music,
-    Dumbbell, Briefcase, Archive, LucideIcon
+    Dumbbell, Briefcase, Archive, LucideIcon,
+    User, LogOut, Settings, Shield
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 
 type NavItem = {
@@ -172,14 +174,22 @@ interface NavbarProps {
 
 export function Navbar({ className }: NavbarProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [showUserMenu, setShowUserMenu] = useState(false);
     const location = useLocation();
     const navigate = useNavigate();
+    const { user, logout, isAuthenticated } = useAuth();
 
     const handleNavigate = (href?: string) => {
         if (href) {
             navigate(href);
             setIsOpen(false);
         }
+    };
+
+    const handleLogout = () => {
+        logout();
+        setShowUserMenu(false);
+        navigate('/login');
     };
 
     return (
@@ -209,7 +219,7 @@ export function Navbar({ className }: NavbarProps) {
             </Link>
 
             {/* Desktop nav links */}
-            <div className="hidden md:flex items-center gap-1">
+            <div className="hidden md:flex items-center gap-2">
                 <Link
                     to="/"
                     className={cn(
@@ -289,6 +299,102 @@ export function Navbar({ className }: NavbarProps) {
                         </div>
                     </div>
                 ))}
+
+                {/* User Menu (Desktop) */}
+                {isAuthenticated && (
+                    <div className="relative group">
+                        <button
+                            onClick={() => setShowUserMenu(!showUserMenu)}
+                            className={cn(
+                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold outline-none cursor-pointer",
+                                "transition-all duration-200 ease-out",
+                                "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50",
+                                "border border-border/50"
+                            )}
+                        >
+                            <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center">
+                                <User className="w-4 h-4 text-accent" />
+                            </div>
+                            <span className="hidden lg:inline">{user?.name || 'User'}</span>
+                            <ChevronDown className={cn(
+                                "w-3 h-3 opacity-70 transition-transform duration-200",
+                                showUserMenu && "rotate-180"
+                            )} />
+                        </button>
+
+                        {/* User Dropdown */}
+                        {showUserMenu && (
+                            <>
+                                <div 
+                                    className="fixed inset-0 z-40" 
+                                    onClick={() => setShowUserMenu(false)}
+                                />
+                                <div className="absolute right-0 top-full mt-2 w-56 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1 z-50">
+                                    <div className="px-3 py-2 border-b border-border/50">
+                                        <p className="text-sm font-semibold text-foreground">{user?.name}</p>
+                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                                    </div>
+                                    <div className="py-1">
+                                        <button
+                                            onClick={() => {
+                                                setShowUserMenu(false);
+                                                navigate('/admin');
+                                            }}
+                                            className={cn(
+                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                            )}
+                                        >
+                                            <Shield className="w-4 h-4" />
+                                            <span>Admin Panel</span>
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setShowUserMenu(false);
+                                                navigate('/settings');
+                                            }}
+                                            className={cn(
+                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                            )}
+                                        >
+                                            <Settings className="w-4 h-4" />
+                                            <span>Settings</span>
+                                        </button>
+                                    </div>
+                                    <div className="border-t border-border/50 py-1">
+                                        <button
+                                            onClick={handleLogout}
+                                            className={cn(
+                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                                                "hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                                            )}
+                                        >
+                                            <LogOut className="w-4 h-4" />
+                                            <span>Logout</span>
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* Login Button (Desktop) */}
+                {!isAuthenticated && (
+                    <Link
+                        to="/login"
+                        className={cn(
+                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold",
+                            "transition-all duration-200 ease-out",
+                            "text-white bg-accent hover:bg-accent/90",
+                            "cursor-pointer"
+                        )}
+                    >
+                        <User className="w-4 h-4" />
+                        <span>Login</span>
+                    </Link>
+                )}
             </div>
 
             {/* Mobile menu button */}
@@ -328,6 +434,60 @@ export function Navbar({ className }: NavbarProps) {
                         {navItems.map((item, index) => (
                             <MobileNavItem key={index} item={item} onNavigate={handleNavigate} />
                         ))}
+
+                        {/* Mobile User Menu */}
+                        <div className="border-t border-border/50 mt-2 pt-2">
+                            {isAuthenticated ? (
+                                <>
+                                    <div className="px-4 py-3 bg-accent/5 rounded-lg mb-2">
+                                        <p className="text-sm font-semibold text-foreground">{user?.name}</p>
+                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            setIsOpen(false);
+                                            navigate('/admin');
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                                            "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
+                                            "cursor-pointer text-violet-600"
+                                        )}
+                                    >
+                                        <Shield className="w-5 h-5" />
+                                        <span>Admin Panel</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            handleLogout();
+                                            setIsOpen(false);
+                                        }}
+                                        className={cn(
+                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                                            "transition-all duration-200 ease-out hover:bg-red-50/50 hover:text-red-600",
+                                            "cursor-pointer text-red-600"
+                                        )}
+                                    >
+                                        <LogOut className="w-5 h-5" />
+                                        <span>Logout</span>
+                                    </button>
+                                </>
+                            ) : (
+                                <Link
+                                    to="/login"
+                                    onClick={() => setIsOpen(false)}
+                                    className={cn(
+                                        "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full",
+                                        "transition-all duration-200 ease-out",
+                                        "bg-accent text-white hover:bg-accent/90",
+                                        "cursor-pointer"
+                                    )}
+                                >
+                                    <User className="w-5 h-5" />
+                                    <span>Login</span>
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
             )}
