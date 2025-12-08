@@ -49,7 +49,7 @@ export const hotspots: Hotspot[] = [
     },
     {
         id: "phone",
-        href: "/contact",
+        href: "tel:0968346317",
         label: "Gọi cho Sơn",
         description: "Liên hệ với Sơn qua điện thoại",
         icon: Smartphone,
@@ -65,7 +65,7 @@ export const hotspots: Hotspot[] = [
     },
     {
         id: "h-monitor",
-        href: "/blogs",
+        href: "/blog",
         label: "Blog của Sơn",
         description:
             "Đọc các bài viết, chia sẻ và suy nghĩ của Sơn về cuộc sống",

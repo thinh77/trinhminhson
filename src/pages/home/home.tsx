@@ -52,14 +52,6 @@ export function HomePage() {
             stroke-linejoin: round;
           }
         }
-        @media (prefers-reduced-motion: reduce) {
-          .hotspot-neon {
-            animation: none !important;
-            stroke: #00FFFF !important;
-            stroke-width: 5px !important;
-            filter: drop-shadow(0 0 5px #00FFFF) !important;
-          }
-        }
       `}</style>
 
             {/* Navbar */}
