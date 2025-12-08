@@ -213,8 +213,8 @@ export function BoardPage() {
 
   return (
     <div className="h-screen flex flex-col bg-stone-100 overflow-hidden">
-      {/* Floating Navbar */}
-      <Navbar className="fixed top-4 left-4 right-4 z-50 rounded-2xl shadow-lg shadow-black/5" />
+      {/* Navbar */}
+      <Navbar className="fixed top-0 left-0 right-0 z-50 shadow-lg shadow-black/5" />
 
       {/* Board header - fixed */}
       <div 

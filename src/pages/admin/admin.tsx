@@ -241,8 +241,8 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Floating Navbar */}
-      <Navbar className="fixed top-4 left-4 right-4 z-50 rounded-2xl shadow-lg shadow-black/5" />
+      {/* Navbar */}
+      <Navbar className="fixed top-0 left-0 right-0 z-50 shadow-lg shadow-black/5" />
 
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-accent/5 pointer-events-none" />
