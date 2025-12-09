@@ -16,6 +16,7 @@ import { WarehouseAppsPage } from "./pages/warehouse/apps.tsx";
 import { WarehouseSoftwarePage } from "./pages/warehouse/software.tsx";
 import { WarehouseMediaPage } from "./pages/warehouse/media.tsx";
 import { WarehouseCoursesPage } from "./pages/warehouse/courses.tsx";
+import { UnderDevelopmentPage } from "./pages/under-development.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
@@ -46,6 +47,17 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/warehouse/software" element={<WarehouseSoftwarePage />} />
             <Route path="/warehouse/media" element={<WarehouseMediaPage />} />
             <Route path="/warehouse/courses" element={<WarehouseCoursesPage />} />
+            
+            {/* Under development routes */}
+            <Route path="/training/*" element={<UnderDevelopmentPage />} />
+            <Route path="/music" element={<UnderDevelopmentPage />} />
+            <Route path="/movies" element={<UnderDevelopmentPage />} />
+            <Route path="/stories" element={<UnderDevelopmentPage />} />
+            <Route path="/memories" element={<UnderDevelopmentPage />} />
+            <Route path="/architecture" element={<UnderDevelopmentPage />} />
+            <Route path="/apps" element={<UnderDevelopmentPage />} />
+            <Route path="/projects/*" element={<UnderDevelopmentPage />} />
+            <Route path="/contact" element={<UnderDevelopmentPage />} />
           </Routes>
         </BrowserRouter>
       </BlogProvider>
