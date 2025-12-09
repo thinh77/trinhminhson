@@ -11,6 +11,11 @@ import { BooksPage } from "./pages/books/books.tsx";
 import { BoardPage } from "./pages/board/board.tsx";
 import { LoginPage } from "./pages/login/login.tsx";
 import RegisterPage from "./pages/auth/register.tsx";
+import { WarehousePage } from "./pages/warehouse/warehouse.tsx";
+import { WarehouseAppsPage } from "./pages/warehouse/apps.tsx";
+import { WarehouseSoftwarePage } from "./pages/warehouse/software.tsx";
+import { WarehouseMediaPage } from "./pages/warehouse/media.tsx";
+import { WarehouseCoursesPage } from "./pages/warehouse/courses.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
@@ -36,6 +41,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/board" element={<BoardPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/warehouse" element={<WarehousePage />} />
+            <Route path="/warehouse/apps" element={<WarehouseAppsPage />} />
+            <Route path="/warehouse/software" element={<WarehouseSoftwarePage />} />
+            <Route path="/warehouse/media" element={<WarehouseMediaPage />} />
+            <Route path="/warehouse/courses" element={<WarehouseCoursesPage />} />
           </Routes>
         </BrowserRouter>
       </BlogProvider>

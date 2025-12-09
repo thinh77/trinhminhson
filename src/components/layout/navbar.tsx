@@ -202,7 +202,7 @@ export function Navbar({ className }: NavbarProps) {
                 "backdrop-blur-2xl border border-border/80 md:border-border/50",
                 // Shadow for depth and separation
                 "shadow-lg shadow-black/5",
-                "transition-all duration-300 ease-out",
+                "transition-all duration-300 ease-out select-none",
                 className
             )}
         >

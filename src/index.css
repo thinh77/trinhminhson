@@ -53,6 +53,9 @@
 
   html {
     scroll-behavior: smooth;
+    /* Prevent mobile browser zoom */
+    touch-action: manipulation;
+    -ms-touch-action: manipulation;
   }
 
   body {
@@ -61,6 +64,11 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     font-family: 'Inter', system-ui, sans-serif;
+    /* Prevent text size adjustment on orientation change */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
 
   h1,

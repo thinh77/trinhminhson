@@ -14,7 +14,7 @@ export function HomePage() {
 
     // Image dimensions (16:9 aspect ratio)
     const ORIGINAL_WIDTH = 3161;
-    const ORIGINAL_HEIGHT = 1778;
+    const ORIGINAL_HEIGHT = 1777;
 
     useEffect(() => {
         // Trigger entrance animation after mount
@@ -77,7 +77,7 @@ export function HomePage() {
                         <div className="select-none relative w-full h-full rounded-2xl overflow-hidden shadow-2xl shadow-black/20 border border-border/50 bg-secondary">
                             {/* Background image */}
                             <img
-                                src="/images/home.png"
+                                src="/images/home.jpg"
                                 alt="Son Trinh's creative workspace with laptop, notebook, and monitor"
                                 className="absolute inset-0 w-full h-full aspect-video object-contain"
                             />
