@@ -118,6 +118,48 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
     }
   }, [notes]);
 
+  // Add content to existing note
+  const handleAddContent = useCallback(async (
+    id: number, 
+    additionalContent: string,
+    textColor: string,
+    fontFamily: string,
+    fontWeight: string,
+    fontSize: string
+  ) => {
+    const note = notes.find(n => n.id === id);
+    if (!note) return;
+
+    try {
+      const newSegment = {
+        content: '\n' + additionalContent,
+        textColor,
+        fontFamily,
+        fontWeight,
+        fontSize,
+      };
+      
+      const textSegments = [...(note.textSegments || []), newSegment];
+      
+      console.log('Calling API to update note:', { id, textSegments });
+      const updatedNote = await notesApi.updateNote(id, { textSegments });
+      console.log('API response:', updatedNote);
+      
+      setNotes((prev) => prev.map((n) => 
+        n.id === id 
+          ? { 
+              ...updatedNote, 
+              createdAt: new Date(updatedNote.createdAt),
+              updatedAt: updatedNote.updatedAt ? new Date(updatedNote.updatedAt) : undefined,
+            } 
+          : n
+      ));
+    } catch (error) {
+      console.error("Failed to add content to note:", error);
+      throw error;
+    }
+  }, [notes]);
+
   // Clear highlighted note
   const clearHighlight = useCallback((noteId: number) => {
     if (highlightedNoteId === noteId) {
@@ -148,6 +190,7 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
     handleCreateNote,
     handleDeleteNote,
     handleLockNote,
+    handleAddContent,
     clearHighlight,
     handleClearAll,
   };

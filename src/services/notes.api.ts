@@ -1,5 +1,13 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
+export interface TextSegment {
+  content: string;
+  textColor: string;
+  fontFamily: string;
+  fontWeight: string;
+  fontSize: string;
+}
+
 export interface Note {
   id: number;
   content: string;
@@ -8,6 +16,7 @@ export interface Note {
   fontFamily: string;
   fontWeight: string;
   fontSize: string;
+  textSegments?: TextSegment[];
   x: number;
   y: number;
   rotation: number;
@@ -36,6 +45,7 @@ export interface UpdateNoteData {
   fontFamily?: string;
   fontWeight?: string;
   fontSize?: string;
+  textSegments?: TextSegment[];
   x?: number;
   y?: number;
   rotation?: number;

@@ -7,6 +7,7 @@ interface UsePanProps {
   isPanning: boolean;
   setIsPanning: (isPanning: boolean) => void;
   initialPanBeforePinchRef: React.RefObject<{ x: number; y: number }>;
+  draggingNoteId: number | null;
 }
 
 export function usePan({
@@ -16,10 +17,12 @@ export function usePan({
   isPanning,
   setIsPanning,
   initialPanBeforePinchRef,
+  draggingNoteId,
 }: UsePanProps) {
   const panOffsetRef = useRef(panOffset);
   const isPanningRef = useRef(isPanning);
-  const panStartRef = useRef<{ x: number; y: number } | null>(null);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const draggingNoteIdRef = useRef(draggingNoteId);
 
   // Keep refs in sync
   useEffect(() => {
@@ -30,28 +33,37 @@ export function usePan({
     isPanningRef.current = isPanning;
   }, [isPanning]);
 
-  // Mouse pan handlers
+  useEffect(() => {
+    draggingNoteIdRef.current = draggingNoteId;
+  }, [draggingNoteId]);
+
+  // Mouse pan handlers - match original code logic
   const handlePanStart = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (e.button === 0) {
-      isPanningRef.current = true;
-      setIsPanning(true);
-      panStartRef.current = { x: e.clientX, y: e.clientY };
-    }
+    // Only pan if clicking on the board itself, not on notes
+    if ((e.target as HTMLElement).closest('.sticky-note')) return;
+    // Don't pan if dragging a note
+    if (draggingNoteIdRef.current !== null) return;
+    
+    e.preventDefault();
+    setIsPanning(true);
+    isPanningRef.current = true;
+    // Store start point relative to current pan offset (original logic)
+    panStartRef.current = {
+      x: e.clientX - panOffsetRef.current.x,
+      y: e.clientY - panOffsetRef.current.y,
+    };
   };
 
   const handlePanMove = (e: MouseEvent) => {
-    if (isPanningRef.current && panStartRef.current) {
-      const dx = e.clientX - panStartRef.current.x;
-      const dy = e.clientY - panStartRef.current.y;
-      
-      const newPanX = panOffsetRef.current.x + dx;
-      const newPanY = panOffsetRef.current.y + dy;
-      
-      panOffsetRef.current = { x: newPanX, y: newPanY };
-      setPanOffset({ x: newPanX, y: newPanY });
-      
-      panStartRef.current = { x: e.clientX, y: e.clientY };
-    }
+    if (!isPanningRef.current) return;
+    
+    e.preventDefault();
+    // Calculate new pan directly from mouse position (original logic)
+    const newX = e.clientX - panStartRef.current.x;
+    const newY = e.clientY - panStartRef.current.y;
+    
+    panOffsetRef.current = { x: newX, y: newY };
+    setPanOffset({ x: newX, y: newY });
   };
 
   const handlePanEnd = () => {
@@ -60,59 +72,53 @@ export function usePan({
     panStartRef.current = null;
   };
 
-  // Touch pan handlers
+  // Touch pan handlers - match original code logic
   const handlePanTouchStart = (e: TouchEvent) => {
-    if (e.touches.length === 1) {
-      e.preventDefault();
-      isPanningRef.current = true;
-      setIsPanning(true);
-      panStartRef.current = {
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY,
-      };
-      
-      // Save initial pan offset when first touch occurs
-      if (initialPanBeforePinchRef.current) {
-        initialPanBeforePinchRef.current.x = panOffsetRef.current.x;
-        initialPanBeforePinchRef.current.y = panOffsetRef.current.y;
-      }
-    } else {
-      // When second finger touches, stop panning
-      isPanningRef.current = false;
-      setIsPanning(false);
-      panStartRef.current = null;
+    // Only pan with single finger, not during pinch
+    if (e.touches.length !== 1) return;
+    // Don't pan if touching on a note - let note handle its own drag
+    const target = e.target as HTMLElement;
+    if (target.closest('.sticky-note')) return;
+    // Don't pan if dragging a note
+    if (draggingNoteIdRef.current !== null) return;
+    
+    // Save initial pan offset BEFORE any panning - for potential pinch zoom later
+    if (initialPanBeforePinchRef.current) {
+      initialPanBeforePinchRef.current.x = panOffsetRef.current.x;
+      initialPanBeforePinchRef.current.y = panOffsetRef.current.y;
     }
+    
+    const touch = e.touches[0];
+    setIsPanning(true);
+    isPanningRef.current = true;
+    // Store start point relative to current pan offset (original logic)
+    panStartRef.current = {
+      x: touch.clientX - panOffsetRef.current.x,
+      y: touch.clientY - panOffsetRef.current.y,
+    };
   };
 
   const handlePanTouchMove = (e: TouchEvent) => {
-    if (e.touches.length === 1 && isPanningRef.current && panStartRef.current) {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const dx = touch.clientX - panStartRef.current.x;
-      const dy = touch.clientY - panStartRef.current.y;
-      
-      const newPanX = panOffsetRef.current.x + dx;
-      const newPanY = panOffsetRef.current.y + dy;
-      
-      panOffsetRef.current = { x: newPanX, y: newPanY };
-      setPanOffset({ x: newPanX, y: newPanY });
-      
-      panStartRef.current = { x: touch.clientX, y: touch.clientY };
-      
-      // Update initial pan during single-finger movement
-      if (initialPanBeforePinchRef.current) {
-        initialPanBeforePinchRef.current.x = newPanX;
-        initialPanBeforePinchRef.current.y = newPanY;
-      }
+    // Stop panning if pinching (2 fingers)
+    if (e.touches.length !== 1) {
+      isPanningRef.current = false;
+      return;
     }
+    if (!isPanningRef.current) return;
+    
+    e.preventDefault();
+    const touch = e.touches[0];
+    // Calculate new pan directly from touch position (original logic)
+    const newX = touch.clientX - panStartRef.current.x;
+    const newY = touch.clientY - panStartRef.current.y;
+    
+    panOffsetRef.current = { x: newX, y: newY };
+    setPanOffset({ x: newX, y: newY });
   };
 
-  const handlePanTouchEnd = (e: TouchEvent) => {
-    if (e.touches.length === 0) {
-      isPanningRef.current = false;
-      setIsPanning(false);
-      panStartRef.current = null;
-    }
+  const handlePanTouchEnd = () => {
+    setIsPanning(false);
+    isPanningRef.current = false;
   };
 
   // Add event listeners

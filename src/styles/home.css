@@ -1,0 +1,34 @@
+/* Hide scrollbar */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Neon blink animation for mobile hotspots */
+@keyframes neon-blink {
+  0%, 100% {
+    stroke: #00FFFF;
+    stroke-width: 5px;
+    filter: drop-shadow(0 0 5px #00FFFF) 
+            drop-shadow(0 0 10px #00FFFF) 
+            drop-shadow(0 0 15px rgba(0, 255, 255, 0.6));
+  }
+  50% {
+    stroke: #FF006E;
+    stroke-width: 5px;
+    filter: drop-shadow(0 0 5px #FF006E) 
+            drop-shadow(0 0 10px #FF006E) 
+            drop-shadow(0 0 15px rgba(255, 0, 110, 0.5));
+  }
+}
+
+@media (max-width: 767px) {
+  .hotspot-neon {
+    animation: neon-blink 2s ease-in-out infinite !important;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+}

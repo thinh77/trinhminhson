@@ -11,12 +11,12 @@ export function WarehousePage() {
             <Navbar className="fixed top-0 left-0 right-0 z-50 shadow-sm" />
             
             {/* Main Content - Account for fixed navbar */}
-            <div className="absolute top-[54px] left-0 right-0 bottom-0 overflow-auto">
+            <div className="pt-20">
                 {/* Hero Section - Minimalist */}
                 <section className="bg-white border-b border-slate-200">
-                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 sm:py-2">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
                         <div className="max-w-3xl">
-                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight mb-2">
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 tracking-tight mb-4">
                                 Nhà kho
                             </h1>
                             <p className="text-lg sm:text-xl text-slate-600 leading-relaxed">
@@ -24,7 +24,7 @@ export function WarehousePage() {
                             </p>
                             
                             {/* Stats */}
-                            <div className="flex items-center gap-8 mt-4 text-sm text-slate-600">
+                            <div className="flex items-center gap-8 mt-8 text-sm text-slate-600">
                                 <div>
                                     <span className="font-semibold text-slate-900">{stats.totalCategories}</span> danh mục
                                 </div>
@@ -38,8 +38,8 @@ export function WarehousePage() {
                 </section>
 
                 {/* Categories Grid */}
-                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {warehouseCategories.map((category) => (
                             <CategoryCard key={category.id} category={category} />
                         ))}

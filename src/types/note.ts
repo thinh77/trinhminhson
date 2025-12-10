@@ -1,3 +1,11 @@
+export interface TextSegment {
+  content: string;
+  textColor: string;
+  fontFamily: string;
+  fontWeight: string;
+  fontSize: string;
+}
+
 export interface Note {
   id: number;
   content: string;
@@ -6,6 +14,7 @@ export interface Note {
   fontFamily: string;
   fontWeight: string;
   fontSize: string;
+  textSegments?: TextSegment[];
   x: number;
   y: number;
   rotation: number;

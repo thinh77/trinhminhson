@@ -71,16 +71,20 @@ export function usePinchZoom({
       pinchStartDistanceRef.current = getTouchDistance(touch1, touch2);
       pinchStartZoomRef.current = zoomRef.current;
       
-      const hasInitialPan = initialPanBeforePinchRef.current.x !== 0 || 
-                           initialPanBeforePinchRef.current.y !== 0 ||
-                           (panOffsetRef.current.x !== initialPanBeforePinchRef.current.x || 
-                            panOffsetRef.current.y !== initialPanBeforePinchRef.current.y);
+      // Only restore to initial pan if we actually saved one during single-finger panning
+      // (not when starting fresh pinch without prior pan)
+      const savedInitialPan = initialPanBeforePinchRef.current;
+      const hasSavedInitialPan = savedInitialPan.x !== 0 || savedInitialPan.y !== 0;
       
-      if (hasInitialPan) {
-        panOffsetRef.current = { ...initialPanBeforePinchRef.current };
-        setPanOffset({ ...initialPanBeforePinchRef.current });
+      if (hasSavedInitialPan) {
+        // Restore to the pan position BEFORE any single-finger panning
+        panOffsetRef.current = { ...savedInitialPan };
+        setPanOffset({ ...savedInitialPan });
+        // Clear it since we've used it
+        initialPanBeforePinchRef.current = { x: 0, y: 0 };
       }
       
+      // Use current pan offset as the starting point for pinch zoom
       pinchStartPanRef.current = { ...panOffsetRef.current };
       
       const board = boardRef.current.getBoundingClientRect();
@@ -89,8 +93,6 @@ export function usePinchZoom({
         x: center.x - board.left,
         y: center.y - board.top,
       };
-      
-      initialPanBeforePinchRef.current = { x: 0, y: 0 };
     }
   };
 
