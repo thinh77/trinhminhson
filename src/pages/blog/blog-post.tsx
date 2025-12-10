@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Navbar } from "@/components/layout/navbar";
 import { useBlog } from "@/stores/blog-store";
+import { RichContent } from "@/components/ui/rich-content";
 
 export function BlogPost() {
     const { slug } = useParams();
@@ -152,16 +153,11 @@ export function BlogPost() {
 
                     {/* Main Content */}
                     <div className="lg:col-span-7">
-                        <article className="prose prose-lg prose-slate dark:prose-invert max-w-none
-                            prose-headings:font-heading prose-headings:font-bold prose-headings:tracking-tight
-                            prose-a:text-accent prose-a:no-underline hover:prose-a:underline
-                            prose-img:rounded-2xl prose-img:shadow-lg
-                            prose-blockquote:border-l-4 prose-blockquote:border-accent prose-blockquote:bg-accent/5 prose-blockquote:py-2 prose-blockquote:px-4 prose-blockquote:rounded-r-lg prose-blockquote:not-italic
-                        ">
-                            <p className="lead text-xl text-muted-foreground mb-8 font-medium">
+                        <article>
+                            <p className="text-xl text-muted-foreground mb-8 font-medium leading-relaxed">
                                 {post.excerpt}
                             </p>
-                            <div dangerouslySetInnerHTML={{ __html: post.content }} />
+                            <RichContent content={post.content} />
                         </article>
 
                         {/* Tags & Share (Mobile) */}

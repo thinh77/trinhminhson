@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { 
   Settings, 
   FileText, 
@@ -30,10 +31,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { BlogFormData } from "@/types/blog";
 import { postsApi } from "@/services/posts.service";
 
-// Extended form type with image
-interface AdminBlogFormData extends BlogFormData {
-  // Already includes: title, excerpt, content, image, tags, readTime
-}
+// Use BlogFormData directly for the admin form (already includes: title, excerpt, content, image, tags, readTime)
+type AdminBlogFormData = BlogFormData;
 
 interface PhotoFormData {
   title: string;
@@ -682,27 +681,29 @@ export function AdminPage() {
                       )}
                     </div>
 
-                    {/* Content */}
+                    {/* Content - CKEditor 5 Rich Text Editor */}
                     <div className="space-y-2">
                       <label 
                         htmlFor="blog-content" 
-                        className="text-sm font-medium text-foreground"
+                        className="text-sm font-medium text-foreground flex items-center gap-2"
                       >
+                        <FileText className="w-4 h-4 text-muted-foreground" />
                         Nội dung <span className="text-red-500">*</span>
                       </label>
-                      <Textarea
+                      <p className="text-xs text-muted-foreground mb-2">
+                        Sử dụng trình soạn thảo để định dạng nội dung bài viết
+                      </p>
+                      <RichTextEditor
                         id="blog-content"
-                        placeholder="Viết nội dung bài viết ở đây... (Hỗ trợ HTML)"
-                        rows={10}
                         value={blogForm.content}
-                        onChange={(e) => setBlogForm({ ...blogForm, content: e.target.value })}
-                        className={cn(
-                          "bg-background/50 resize-none font-mono text-sm",
-                          blogErrors.content && "border-red-500 focus-visible:ring-red-500"
-                        )}
+                        onChange={(content) => setBlogForm({ ...blogForm, content })}
+                        placeholder="Viết nội dung bài viết của bạn ở đây..."
+                        minHeight="450px"
+                        disabled={isSubmitting}
+                        error={!!blogErrors.content}
                       />
                       {blogErrors.content && (
-                        <p className="text-red-500 text-xs flex items-center gap-1">
+                        <p className="text-red-500 text-xs flex items-center gap-1 mt-1">
                           <AlertCircle className="w-3 h-3" />
                           {blogErrors.content}
                         </p>
