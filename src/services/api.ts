@@ -1,5 +1,11 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+// - Production (built + served by Nginx): use same-origin reverse proxy at /api
+// - Development: default to local backend unless overridden via VITE_API_URL
+const DEFAULT_API_BASE_URL = import.meta.env.DEV
+  ? 'http://localhost:4000/api'
+  : '/api';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || DEFAULT_API_BASE_URL;
 
 // API Response types
 export interface ApiResponse<T> {
