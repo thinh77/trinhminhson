@@ -1,4 +1,5 @@
 // API Configuration
+<<<<<<< HEAD
 const API_BASE_URL =
     import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
@@ -6,6 +7,15 @@ const API_BASE_URL =
 function getAuthToken(): string | null {
     return localStorage.getItem("auth_token");
 }
+=======
+// - Production (built + served by Nginx): use same-origin reverse proxy at /api
+// - Development: default to local backend unless overridden via VITE_API_URL
+const DEFAULT_API_BASE_URL = import.meta.env.DEV
+  ? 'http://localhost:4000/api'
+  : '/api';
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL as string | undefined) || DEFAULT_API_BASE_URL;
+>>>>>>> a67e12a598e1e3319bfda7c32ef79e20684e5055
 
 // API Response types
 export interface ApiResponse<T> {
