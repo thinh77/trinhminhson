@@ -1,13 +1,7 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from "react";
-import { BlogPost, BlogAuthor } from "@/types/blog";
+import { BlogPost } from "@/types/blog";
 import { postsApi, BackendPost } from "@/services/posts.service";
 
-// Default author for new posts
-const DEFAULT_AUTHOR: BlogAuthor = {
-    name: "Trịnh Minh Sơn",
-    avatar: "https://github.com/shadcn.png",
-    role: "Architect & Developer"
-};
 
 // Transform backend post to frontend format
 function transformPost(backendPost: BackendPost): BlogPost {

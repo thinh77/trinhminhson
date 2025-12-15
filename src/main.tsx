@@ -17,6 +17,9 @@ import { WarehouseSoftwarePage } from "./pages/warehouse/software.tsx";
 import { WarehouseMediaPage } from "./pages/warehouse/media.tsx";
 import { WarehouseCoursesPage } from "./pages/warehouse/courses.tsx";
 import { UnderDevelopmentPage } from "./pages/under-development.tsx";
+import { JapaneseFlashcardHome } from "./pages/learning/flashcard-home.tsx";
+import { JapaneseFlashcardStudy } from "./pages/learning/flashcard-study.tsx";
+import { JapaneseFlashcardUpload } from "./pages/learning/flashcard-upload.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
 import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
@@ -47,6 +50,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/warehouse/software" element={<WarehouseSoftwarePage />} />
             <Route path="/warehouse/media" element={<WarehouseMediaPage />} />
             <Route path="/warehouse/courses" element={<WarehouseCoursesPage />} />
+            
+            {/* Japanese Flashcard routes */}
+            <Route path="/learning" element={<JapaneseFlashcardHome />} />
+            <Route path="/learning/study/:setId" element={<JapaneseFlashcardStudy />} />
+            <Route path="/learning/upload" element={
+              <ProtectedRoute>
+                <JapaneseFlashcardUpload />
+              </ProtectedRoute>
+            } />
             
             {/* Under development routes */}
             <Route path="/training/*" element={<UnderDevelopmentPage />} />

@@ -208,7 +208,7 @@ export function BooksPage() {
               { label: "Đang đọc", value: 2 },
               { label: "Muốn đọc", value: 15 },
               { label: "Rating trung bình", value: "4.5" }
-            ].map((stat, index) => (
+            ].map((stat) => (
               <div 
                 key={stat.label}
                 className="p-4 rounded-2xl bg-card border border-border/50 text-center"

@@ -1,85 +1,108 @@
 // API Configuration
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
+const API_BASE_URL =
+    import.meta.env.VITE_API_URL || "http://localhost:4000/api";
+
+// Helper to get auth token
+function getAuthToken(): string | null {
+    return localStorage.getItem("auth_token");
+}
 
 // API Response types
 export interface ApiResponse<T> {
-  success?: boolean;
-  data?: T;
-  message?: string;
-  errors?: Array<{ field: string; message: string }>;
+    success?: boolean;
+    data?: T;
+    message?: string;
+    errors?: Array<{ field: string; message: string }>;
 }
 
 export interface PaginatedResponse<T> {
-  data?: T[];
-  posts?: T[];
-  users?: T[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-  };
+    data?: T[];
+    posts?: T[];
+    users?: T[];
+    pagination: {
+        page: number;
+        limit: number;
+        total: number;
+        totalPages: number;
+    };
 }
 
 // Generic API request handler
 async function apiRequest<T>(
-  endpoint: string,
-  options: RequestInit = {}
+    endpoint: string,
+    options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE_URL}${endpoint}`;
-  
-  const defaultHeaders = {
-    'Content-Type': 'application/json',
-  };
+    const url = `${API_BASE_URL}${endpoint}`;
 
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  };
+    // Normalize & merge headers safely (HeadersInit is a union and can't be spread reliably)
+    const headers = new Headers(options.headers);
 
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    // Auto-attach auth token if available
+    const token = getAuthToken();
+    if (token && !headers.has("Authorization")) {
+        headers.set("Authorization", `Bearer ${token}`);
     }
 
-    return await response.json();
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
-  }
+    // Default JSON content type for requests with a body (unless caller already set it)
+    if (options.body !== undefined && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    const config: RequestInit = {
+        ...options,
+        headers,
+    };
+
+    try {
+        const response = await fetch(url, config);
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(
+                errorData.message || `HTTP error! status: ${response.status}`
+            );
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("API request failed:", error);
+        throw error;
+    }
 }
 
 // API service object
 export const api = {
-  // GET request
-  get: <T>(endpoint: string, options?: RequestInit) =>
-    apiRequest<T>(endpoint, { ...options, method: 'GET' }),
+    // GET request
+    get: <T>(endpoint: string, options?: RequestInit) =>
+        apiRequest<T>(endpoint, { ...options, method: "GET" }),
 
-  // POST request
-  post: <T>(endpoint: string, data: unknown, options?: RequestInit) =>
-    apiRequest<T>(endpoint, {
-      ...options,
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+    // POST request
+    post: <T>(endpoint: string, data: unknown, options?: RequestInit) =>
+        apiRequest<T>(endpoint, {
+            ...options,
+            method: "POST",
+            body: JSON.stringify(data),
+        }),
 
-  // PUT request
-  put: <T>(endpoint: string, data: unknown, options?: RequestInit) =>
-    apiRequest<T>(endpoint, {
-      ...options,
-      method: 'PUT',
-      body: JSON.stringify(data),
-    }),
+    // PUT request
+    put: <T>(endpoint: string, data: unknown, options?: RequestInit) =>
+        apiRequest<T>(endpoint, {
+            ...options,
+            method: "PUT",
+            body: JSON.stringify(data),
+        }),
 
-  // DELETE request
-  delete: <T>(endpoint: string, options?: RequestInit) =>
-    apiRequest<T>(endpoint, { ...options, method: 'DELETE' }),
+    // PATCH request
+    patch: <T>(endpoint: string, data: unknown, options?: RequestInit) =>
+        apiRequest<T>(endpoint, {
+            ...options,
+            method: "PATCH",
+            body: JSON.stringify(data),
+        }),
+
+    // DELETE request
+    delete: <T>(endpoint: string, options?: RequestInit) =>
+        apiRequest<T>(endpoint, { ...options, method: "DELETE" }),
 };
 
 export { API_BASE_URL };
