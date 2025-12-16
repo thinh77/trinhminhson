@@ -9,7 +9,7 @@ import { PhotosPage } from "./pages/photos/photos.tsx";
 import { AdminPage } from "./pages/admin/admin.tsx";
 import { BooksPage } from "./pages/books/books.tsx";
 import { BoardPage } from "./pages/board/board.tsx";
-import { LoginPage } from "./pages/login/login.tsx";
+import Login from "./pages/auth/login.tsx";
 import RegisterPage from "./pages/auth/register.tsx";
 import { WarehousePage } from "./pages/warehouse/warehouse.tsx";
 import { WarehouseAppsPage } from "./pages/warehouse/apps.tsx";
@@ -22,7 +22,7 @@ import { JapaneseFlashcardStudy } from "./pages/learning/flashcard-study.tsx";
 import { JapaneseFlashcardUpload } from "./pages/learning/flashcard-upload.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
-import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
+import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute.tsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
@@ -37,13 +37,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             <Route path="/blog/:slug" element={<BlogPost />} />
             <Route path="/photos" element={<PhotosPage />} />
             <Route path="/admin" element={
-              <ProtectedRoute>
+              <AdminRoute>
                 <AdminPage />
-              </ProtectedRoute>
+              </AdminRoute>
             } />
             <Route path="/books" element={<BooksPage />} />
             <Route path="/board" element={<BoardPage />} />
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<Login />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/warehouse" element={<WarehousePage />} />
             <Route path="/warehouse/apps" element={<WarehouseAppsPage />} />

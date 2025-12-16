@@ -121,7 +121,7 @@ export function BlogPost() {
                 </div>
             </div>
 
-            <div className="container max-w-6xl px-6 mx-auto mt-12">
+            <div className=" max-w-7xl px-6 mx-auto mt-12">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
                     {/* Sidebar (Left) - Share & Navigation */}
                     <div className="hidden lg:block lg:col-span-2 space-y-8">

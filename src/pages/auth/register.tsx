@@ -5,13 +5,14 @@
  * Colors: Blog palette (Blue #3B82F6, Orange CTA #F97316)
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, Loader2, Mail, Lock, User } from "lucide-react";
+import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, Loader2, Mail, Lock, User, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Register() {
   const [formData, setFormData] = useState({
@@ -30,15 +31,24 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [registerError, setRegisterError] = useState("");
   const navigate = useNavigate();
+  const { isAuthenticated, loading, register } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   // Validation functions
   const validateName = (name: string) => {
     if (!name) {
-      return "Name is required";
+      return "Vui lòng nhập họ và tên";
     }
     if (name.length < 2) {
-      return "Name must be at least 2 characters";
+      return "Họ và tên phải có ít nhất 2 ký tự";
     }
     return "";
   };
@@ -46,39 +56,39 @@ export default function Register() {
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      return "Email is required";
+      return "Vui lòng nhập email";
     }
     if (!emailRegex.test(email)) {
-      return "Please enter a valid email address";
+      return "Vui lòng nhập địa chỉ email hợp lệ";
     }
     return "";
   };
 
   const validatePassword = (password: string) => {
     if (!password) {
-      return "Password is required";
+      return "Vui lòng nhập mật khẩu";
     }
     if (password.length < 6) {
-      return "Password must be at least 6 characters";
+      return "Mật khẩu phải có ít nhất 6 ký tự";
     }
     if (!/[A-Z]/.test(password)) {
-      return "Password must contain at least one uppercase letter";
+      return "Mật khẩu phải chứa ít nhất một chữ hoa";
     }
     if (!/[a-z]/.test(password)) {
-      return "Password must contain at least one lowercase letter";
+      return "Mật khẩu phải chứa ít nhất một chữ thường";
     }
     if (!/[0-9]/.test(password)) {
-      return "Password must contain at least one number";
+      return "Mật khẩu phải chứa ít nhất một số";
     }
     return "";
   };
 
   const validateConfirmPassword = (confirmPassword: string) => {
     if (!confirmPassword) {
-      return "Please confirm your password";
+      return "Vui lòng xác nhận mật khẩu";
     }
     if (confirmPassword !== formData.password) {
-      return "Passwords do not match";
+      return "Mật khẩu xác nhận không khớp";
     }
     return "";
   };
@@ -123,18 +133,20 @@ export default function Register() {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Registration attempt:", {
-        name: formData.name,
-        email: formData.email,
-      });
-      setSuccessMessage("Account created successfully! Redirecting to login...");
+    setRegisterError("");
+
+    try {
+      await register(formData.name, formData.email, formData.password);
+      setSuccessMessage("Tài khoản đã được tạo thành công! Đang chuyển hướng...");
       setTimeout(() => {
-        navigate("/login");
-      }, 2000);
+        navigate("/", { replace: true });
+      }, 1500);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setRegisterError(err.message || "Đăng ký thất bại. Vui lòng thử lại.");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
   // Password strength indicator
@@ -150,12 +162,21 @@ export default function Register() {
     if (/[0-9]/.test(password)) strength++;
     if (/[^A-Za-z0-9]/.test(password)) strength++;
 
-    if (strength <= 2) return { strength: 1, label: "Weak", color: "bg-red-500" };
-    if (strength <= 4) return { strength: 2, label: "Medium", color: "bg-yellow-500" };
-    return { strength: 3, label: "Strong", color: "bg-green-500" };
+    if (strength <= 2) return { strength: 1, label: "Yếu", color: "bg-red-500" };
+    if (strength <= 4) return { strength: 2, label: "Trung bình", color: "bg-yellow-500" };
+    return { strength: 3, label: "Mạnh", color: "bg-green-500" };
   };
 
   const passwordStrength = getPasswordStrength();
+
+  // Show loading while checking auth status
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-orange-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
@@ -165,6 +186,15 @@ export default function Register() {
         <div className="absolute bottom-20 -left-20 w-96 h-96 bg-orange-400/10 rounded-full blur-3xl"></div>
       </div>
 
+      {/* Home Button */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/80 transition-all duration-200 shadow-sm font-['Open_Sans',sans-serif] text-sm font-medium"
+      >
+        <Home className="w-4 h-4" />
+        <span>Trang chủ</span>
+      </Link>
+
       <Card className="w-full max-w-md relative bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-blue-500/10">
         <div className="p-8 sm:p-10">
           {/* Header */}
@@ -173,10 +203,10 @@ export default function Register() {
               <UserPlus className="w-8 h-8 text-white" strokeWidth={2.5} />
             </div>
             <h1 className="text-3xl font-bold text-slate-900 font-['Poppins',sans-serif] tracking-tight">
-              Create Account
+              Tạo tài khoản
             </h1>
             <p className="text-slate-600 mt-2 font-['Open_Sans',sans-serif]">
-              Join us and start your learning journey
+              Tham gia và bắt đầu hành trình học tập của bạn
             </p>
           </div>
 
@@ -192,13 +222,23 @@ export default function Register() {
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Register Error */}
+            {registerError && (
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 font-['Open_Sans',sans-serif]">
+                  {registerError}
+                </p>
+              </div>
+            )}
+
             {/* Name Field */}
             <div>
               <label
                 htmlFor="name"
                 className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Full Name
+                Họ và tên
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -219,7 +259,7 @@ export default function Register() {
                       ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       : "border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300"
                   )}
-                  placeholder="John Doe"
+                  placeholder="Nguyễn Văn A"
                   aria-invalid={!!errors.name}
                   aria-describedby={errors.name ? "name-error" : undefined}
                 />
@@ -242,7 +282,7 @@ export default function Register() {
                 htmlFor="email"
                 className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Email Address
+                Địa chỉ Email
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -286,7 +326,7 @@ export default function Register() {
                 htmlFor="password"
                 className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Password
+                Mật khẩu
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -315,7 +355,7 @@ export default function Register() {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200 cursor-pointer p-1"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
                 >
                   {showPassword ? (
                     <EyeOff className="w-5 h-5" />
@@ -336,7 +376,7 @@ export default function Register() {
                         style={{ width: `${(passwordStrength.strength / 3) * 100}%` }}
                       />
                     </div>
-                    <span className="text-xs font-semibold text-slate-600 min-w-[60px] text-right font-['Open_Sans',sans-serif]">
+                    <span className="text-xs font-semibold text-slate-600 min-w-[70px] text-right font-['Open_Sans',sans-serif]">
                       {passwordStrength.label}
                     </span>
                   </div>
@@ -360,7 +400,7 @@ export default function Register() {
                 htmlFor="confirmPassword"
                 className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Confirm Password
+                Xác nhận mật khẩu
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
@@ -392,7 +432,7 @@ export default function Register() {
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200 cursor-pointer p-1"
                   aria-label={
-                    showConfirmPassword ? "Hide password" : "Show password"
+                    showConfirmPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"
                   }
                 >
                   {showConfirmPassword ? (
@@ -423,10 +463,10 @@ export default function Register() {
               {isLoading ? (
                 <div className="flex items-center justify-center gap-2">
                   <Loader2 className="animate-spin h-5 w-5 text-white" />
-                  <span>Creating account...</span>
+                  <span>Đang tạo tài khoản...</span>
                 </div>
               ) : (
-                "Create Account"
+                "Tạo tài khoản"
               )}
             </Button>
           </form>
@@ -438,7 +478,7 @@ export default function Register() {
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-4 bg-white text-slate-500 font-['Open_Sans',sans-serif]">
-                Already have an account?
+                Đã có tài khoản?
               </span>
             </div>
           </div>
@@ -446,9 +486,9 @@ export default function Register() {
           {/* Login Link */}
           <Link
             to="/login"
-            className="block w-full h-12 px-6 rounded-lg border-2 border-blue-500 hover:border-blue-600 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold font-['Poppins',sans-serif] transition-all duration-200 flex items-center justify-center cursor-pointer"
+            className="block w-full h-12 px-6 rounded-xl border-2 border-blue-500 hover:border-blue-600 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold font-['Poppins',sans-serif] transition-all duration-200 flex items-center justify-center cursor-pointer"
           >
-            Sign in instead
+            Đăng nhập ngay
           </Link>
         </div>
       </Card>

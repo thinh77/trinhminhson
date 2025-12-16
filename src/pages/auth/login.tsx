@@ -1,7 +1,18 @@
-import { useState } from "react";
+/**
+ * Login Page
+ * Modern professional design with glassmorphism and Soft UI Evolution
+ * Typography: Poppins (heading) + Open Sans (body)
+ * Colors: Blog palette (Blue #3B82F6, Orange CTA #F97316)
+ */
+
+import { useState, useEffect } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Eye, EyeOff, LogIn, AlertCircle, Loader2, Mail, Lock, Home } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function Login() {
   const [formData, setFormData] = useState({
@@ -12,26 +23,37 @@ export default function Login() {
     email: "",
     password: "",
   });
+  const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState("");
+  const navigate = useNavigate();
+  const { isAuthenticated, loading, login } = useAuth();
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && isAuthenticated) {
+      navigate("/", { replace: true });
+    }
+  }, [isAuthenticated, loading, navigate]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!email) {
-      return "Email is required";
+      return "Vui lòng nhập email";
     }
     if (!emailRegex.test(email)) {
-      return "Please enter a valid email address";
+      return "Vui lòng nhập địa chỉ email hợp lệ";
     }
     return "";
   };
 
   const validatePassword = (password: string) => {
     if (!password) {
-      return "Password is required";
+      return "Vui lòng nhập mật khẩu";
     }
     if (password.length < 6) {
-      return "Password must be at least 6 characters";
+      return "Mật khẩu phải có ít nhất 6 ký tự";
     }
     return "";
   };
@@ -63,79 +85,112 @@ export default function Login() {
     }
 
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      console.log("Login attempt:", { ...formData, rememberMe });
+    setLoginError("");
+    
+    try {
+      await login(formData.email, formData.password);
+      navigate("/", { replace: true });
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      setLoginError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+    } finally {
       setIsLoading(false);
-    }, 1500);
+    }
   };
 
+  // Show loading while checking auth status
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-orange-50">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 px-4 sm:px-6 lg:px-8">
-      <Card className="w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm border border-slate-200 dark:border-slate-800 shadow-xl">
-        <div className="p-8">
+    <div className="min-h-screen flex items-center justify-center px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-blue-50 via-white to-orange-50">
+      {/* Background decoration */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 -right-20 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl"></div>
+        <div className="absolute bottom-20 -left-20 w-96 h-96 bg-orange-400/10 rounded-full blur-3xl"></div>
+      </div>
+
+      {/* Home Button */}
+      <Link
+        to="/"
+        className="absolute top-6 left-6 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/80 backdrop-blur-sm border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50/80 transition-all duration-200 shadow-sm font-['Open_Sans',sans-serif] text-sm font-medium"
+      >
+        <Home className="w-4 h-4" />
+        <span>Trang chủ</span>
+      </Link>
+
+      <Card className="w-full max-w-md relative bg-white/95 backdrop-blur-xl border border-slate-200 shadow-2xl shadow-blue-500/10">
+        <div className="p-8 sm:p-10">
           {/* Header */}
           <div className="text-center mb-8">
-            <div className="flex justify-center mb-4">
-              <div className="w-12 h-12 rounded-lg bg-slate-900 dark:bg-white flex items-center justify-center">
-                <svg
-                  className="w-7 h-7 text-white dark:text-slate-900"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                  />
-                </svg>
-              </div>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-600 shadow-lg shadow-blue-500/30 mb-4">
+              <LogIn className="w-8 h-8 text-white" strokeWidth={2.5} />
             </div>
-            <h1 className="text-2xl font-semibold text-slate-900 dark:text-white font-heading">
-              Welcome Back
+            <h1 className="text-3xl font-bold text-slate-900 font-['Poppins',sans-serif] tracking-tight">
+              Chào mừng trở lại
             </h1>
-            <p className="text-slate-600 dark:text-slate-400 mt-2 font-body">
-              Sign in to your account to continue
+            <p className="text-slate-600 mt-2 font-['Open_Sans',sans-serif]">
+              Đăng nhập để tiếp tục hành trình học tập
             </p>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Login Error */}
+            {loginError && (
+              <div className="p-4 rounded-xl bg-red-50 border border-red-200 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 font-['Open_Sans',sans-serif]">
+                  {loginError}
+                </p>
+              </div>
+            )}
+
             {/* Email Field */}
             <div>
               <label
                 htmlFor="email"
-                className="block text-sm font-medium text-slate-900 dark:text-white mb-2 font-body"
+                className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Email Address
+                Địa chỉ Email
               </label>
-              <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                onBlur={() => handleBlur("email")}
-                className={`w-full bg-white dark:bg-slate-800 border ${
-                  errors.email
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-slate-900 dark:focus:ring-white"
-                } focus:ring-2 transition-colors duration-200`}
-                placeholder="you@example.com"
-                aria-invalid={!!errors.email}
-                aria-describedby={errors.email ? "email-error" : undefined}
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <Input
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  onBlur={() => handleBlur("email")}
+                  className={cn(
+                    "h-12 w-full pl-11 pr-4 bg-white border transition-all duration-200 font-['Open_Sans',sans-serif]",
+                    errors.email
+                      ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      : "border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300"
+                  )}
+                  placeholder="you@example.com"
+                  aria-invalid={!!errors.email}
+                  aria-describedby={errors.email ? "email-error" : undefined}
+                />
+              </div>
               {errors.email && (
                 <p
                   id="email-error"
-                  className="mt-1.5 text-sm text-red-600 dark:text-red-400 font-body"
+                  className="mt-2 text-sm text-red-600 font-['Open_Sans',sans-serif] flex items-center gap-1.5"
                   role="alert"
                 >
-                  {errors.email}
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{errors.email}</span>
                 </p>
               )}
             </div>
@@ -144,35 +199,54 @@ export default function Login() {
             <div>
               <label
                 htmlFor="password"
-                className="block text-sm font-medium text-slate-900 dark:text-white mb-2 font-body"
+                className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Password
+                Mật khẩu
               </label>
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={formData.password}
-                onChange={(e) =>
-                  setFormData({ ...formData, password: e.target.value })
-                }
-                onBlur={() => handleBlur("password")}
-                className={`w-full bg-white dark:bg-slate-800 border ${
-                  errors.password
-                    ? "border-red-500 focus:ring-red-500"
-                    : "border-slate-300 dark:border-slate-700 focus:ring-slate-900 dark:focus:ring-white"
-                } focus:ring-2 transition-colors duration-200`}
-                placeholder="••••••••"
-                aria-invalid={!!errors.password}
-                aria-describedby={errors.password ? "password-error" : undefined}
-              />
+              <div className="relative">
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
+                  <Lock className="w-5 h-5" />
+                </div>
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="current-password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                  onBlur={() => handleBlur("password")}
+                  className={cn(
+                    "h-12 w-full pl-11 pr-12 bg-white border transition-all duration-200 font-['Open_Sans',sans-serif]",
+                    errors.password
+                      ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                      : "border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300"
+                  )}
+                  placeholder="••••••••"
+                  aria-invalid={!!errors.password}
+                  aria-describedby={errors.password ? "password-error" : undefined}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700 transition-colors duration-200 cursor-pointer p-1"
+                  aria-label={showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+              </div>
               {errors.password && (
                 <p
                   id="password-error"
-                  className="mt-1.5 text-sm text-red-600 dark:text-red-400 font-body"
+                  className="mt-2 text-sm text-red-600 font-['Open_Sans',sans-serif] flex items-center gap-1.5"
                   role="alert"
                 >
-                  {errors.password}
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{errors.password}</span>
                 </p>
               )}
             </div>
@@ -184,103 +258,56 @@ export default function Login() {
                   type="checkbox"
                   checked={rememberMe}
                   onChange={(e) => setRememberMe(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:ring-2 focus:ring-slate-900 dark:focus:ring-white transition-colors duration-200 cursor-pointer"
+                  className="w-4 h-4 rounded border-slate-300 text-blue-500 focus:ring-2 focus:ring-blue-500 transition-colors duration-200 cursor-pointer"
                 />
-                <span className="ml-2 text-sm text-slate-700 dark:text-slate-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors duration-200 font-body">
-                  Remember me
+                <span className="ml-2 text-sm text-slate-600 group-hover:text-slate-900 transition-colors duration-200 font-['Open_Sans',sans-serif]">
+                  Ghi nhớ đăng nhập
                 </span>
               </label>
-              <a
-                href="#"
-                className="text-sm text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors duration-200 font-body"
+              <Link
+                to="/forgot-password"
+                className="text-sm text-blue-600 hover:text-blue-700 transition-colors duration-200 font-['Open_Sans',sans-serif] font-medium"
               >
-                Forgot password?
-              </a>
+                Quên mật khẩu?
+              </Link>
             </div>
 
             {/* Submit Button */}
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-slate-100 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:ring-offset-2 transition-colors duration-200 font-medium font-body"
+              className="w-full h-12 bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 transition-all duration-200 font-semibold font-['Poppins',sans-serif] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <div className="flex items-center justify-center">
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white dark:text-slate-900"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Signing in...
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="animate-spin h-5 w-5 text-white" />
+                  <span>Đang đăng nhập...</span>
                 </div>
               ) : (
-                "Sign In"
+                "Đăng nhập"
               )}
             </Button>
           </form>
 
-          {/* Divider */}
+          {/* Sign Up Link */}
           <div className="relative my-8">
             <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-slate-200 dark:border-slate-800"></div>
+              <div className="w-full border-t border-slate-200"></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-4 bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 font-body">
-                Or continue with
+              <span className="px-4 bg-white text-slate-500 font-['Open_Sans',sans-serif]">
+                Chưa có tài khoản?
               </span>
             </div>
           </div>
 
-          {/* Social Login */}
-          <div className="grid grid-cols-2 gap-4">
-            <button
-              type="button"
-              className="flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:ring-offset-2 transition-colors duration-200 font-body"
-            >
-              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-                <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-              </svg>
-              Google
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-700 rounded-md shadow-sm bg-white dark:bg-slate-800 text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 focus:ring-2 focus:ring-slate-900 dark:focus:ring-white focus:ring-offset-2 transition-colors duration-200 font-body"
-            >
-              <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-              GitHub
-            </button>
-          </div>
-
-          {/* Sign Up Link */}
-          <p className="mt-8 text-center text-sm text-slate-600 dark:text-slate-400 font-body">
-            Don't have an account?{" "}
-            <a
-              href="#"
-              className="font-medium text-slate-900 dark:text-white hover:underline transition-colors duration-200"
-            >
-              Sign up
-            </a>
-          </p>
+          {/* Register Link */}
+          <Link
+            to="/register"
+            className="block w-full h-12 px-6 rounded-xl border-2 border-blue-500 hover:border-blue-600 text-blue-600 hover:text-blue-700 hover:bg-blue-50 font-semibold font-['Poppins',sans-serif] transition-all duration-200 flex items-center justify-center cursor-pointer"
+          >
+            Đăng ký ngay
+          </Link>
         </div>
       </Card>
     </div>

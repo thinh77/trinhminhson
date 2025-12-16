@@ -335,19 +335,21 @@ export function Navbar({ className }: NavbarProps) {
                                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                                     </div>
                                     <div className="py-1">
-                                        <button
-                                            onClick={() => {
-                                                setShowUserMenu(false);
-                                                navigate('/admin');
-                                            }}
-                                            className={cn(
-                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
-                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                            )}
-                                        >
-                                            <Shield className="w-4 h-4" />
-                                            <span>Admin Panel</span>
-                                        </button>
+                                        {user?.role === 'admin' && (
+                                            <button
+                                                onClick={() => {
+                                                    setShowUserMenu(false);
+                                                    navigate('/admin');
+                                                }}
+                                                className={cn(
+                                                    "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                                                    "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                                                )}
+                                            >
+                                                <Shield className="w-4 h-4" />
+                                                <span>Admin Panel</span>
+                                            </button>
+                                        )}
                                         <button
                                             onClick={() => {
                                                 setShowUserMenu(false);
@@ -443,20 +445,22 @@ export function Navbar({ className }: NavbarProps) {
                                         <p className="text-sm font-semibold text-foreground">{user?.name}</p>
                                         <p className="text-xs text-muted-foreground">{user?.email}</p>
                                     </div>
-                                    <button
-                                        onClick={() => {
-                                            setIsOpen(false);
-                                            navigate('/admin');
-                                        }}
-                                        className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
-                                            "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
-                                            "cursor-pointer text-violet-600"
-                                        )}
-                                    >
-                                        <Shield className="w-5 h-5" />
-                                        <span>Admin Panel</span>
-                                    </button>
+                                    {user?.role === 'admin' && (
+                                        <button
+                                            onClick={() => {
+                                                setIsOpen(false);
+                                                navigate('/admin');
+                                            }}
+                                            className={cn(
+                                                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                                                "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
+                                                "cursor-pointer text-violet-600"
+                                            )}
+                                        >
+                                            <Shield className="w-5 h-5" />
+                                            <span>Admin Panel</span>
+                                        </button>
+                                    )}
                                     <button
                                         onClick={() => {
                                             handleLogout();

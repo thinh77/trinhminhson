@@ -75,7 +75,7 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
   const isJapaneseContent = ["kanji", "pronunciation", "example"].includes(currentConfig.field);
 
   return (
-    <div className="w-full max-w-sm mx-auto">
+    <div className="w-full max-w-xl mx-auto">
       {/* Main Card */}
       <div
         ref={containerRef}
@@ -83,7 +83,7 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        className="relative aspect-[4/5] cursor-pointer select-none"
+        className="relative aspect-[16/8] cursor-pointer select-none"
       >
         {/* Card Body */}
         <div className={`absolute inset-0 bg-gradient-to-br ${currentConfig.color} rounded-2xl 
@@ -97,17 +97,17 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
             </div>
             
             {/* Content */}
-            <div className="flex-1 flex items-center justify-center p-5">
+            <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
               <p 
                 className={`text-center break-words leading-relaxed
                             ${isJapaneseContent ? "font-['Noto_Sans_JP',_'Noto_Serif_JP',_sans-serif]" : ""}
                             ${currentConfig.field === "kanji" 
-                              ? "text-6xl sm:text-7xl font-bold text-gray-800" 
+                              ? "text-6xl sm:text-7xl lg:text-8xl font-bold text-gray-800" 
                               : currentConfig.field === "example"
-                                ? "text-base sm:text-lg text-gray-700 leading-relaxed"
+                                ? "text-1xl sm:text-2xl lg:text-3xl text-gray-700 leading-relaxed"
                                 : currentConfig.field === "pronunciation"
-                                  ? "text-3xl sm:text-4xl font-medium text-gray-800"
-                                  : "text-2xl sm:text-3xl font-medium text-gray-800"
+                                  ? "text-4xl sm:text-5xl lg:text-6xl font-medium text-gray-800"
+                                  : "text-3xl sm:text-4xl lg:text-5xl font-medium text-gray-800"
                             }`}
                 style={isJapaneseContent ? { fontFamily: "'Noto Sans JP', 'Noto Serif JP', sans-serif" } : {}}
               >
