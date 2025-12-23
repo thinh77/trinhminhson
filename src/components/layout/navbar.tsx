@@ -1,500 +1,580 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
-    Home, BookOpen, MessageCircle, Menu, X,
-    ChevronDown, ChevronRight, Music,
-    Dumbbell, Briefcase, Archive, LucideIcon,
-    User, LogOut, Settings, Shield
+  Home,
+  BookOpen,
+  MessageCircle,
+  Menu,
+  X,
+  ChevronDown,
+  ChevronRight,
+  Music,
+  Dumbbell,
+  Briefcase,
+  Archive,
+  LucideIcon,
+  User,
+  LogOut,
+  Settings,
+  Shield,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
-
+import { STATIC_BASE_URL } from "@/services/api";
 
 type NavItem = {
-    label: string;
-    href?: string;
-    icon?: LucideIcon;
-    children?: NavItem[];
+  label: string;
+  href?: string;
+  icon?: LucideIcon;
+  children?: NavItem[];
 };
 
 const MobileNavItem = ({
-    item,
-    depth = 0,
-    onNavigate
+  item,
+  depth = 0,
+  onNavigate,
 }: {
-    item: NavItem;
-    depth?: number;
-    onNavigate: (href?: string) => void;
+  item: NavItem;
+  depth?: number;
+  onNavigate: (href?: string) => void;
 }) => {
-    const [isOpen, setIsOpen] = useState(false);
-    const location = useLocation();
-    const hasChildren = item.children && item.children.length > 0;
+  const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
+  const hasChildren = item.children && item.children.length > 0;
 
-    // Check if any child is active to auto-expand or highlight
-    const isChildActive = (items?: NavItem[]): boolean => {
-        if (!items) return false;
-        return items.some(i =>
-            i.href === location.pathname || isChildActive(i.children)
-        );
-    };
+  // Check if any child is active to auto-expand or highlight
+  const isChildActive = (items?: NavItem[]): boolean => {
+    if (!items) return false;
+    return items.some(
+      (i) => i.href === location.pathname || isChildActive(i.children)
+    );
+  };
 
-    const isActive = item.href === location.pathname || isChildActive(item.children);
+  const isActive =
+    item.href === location.pathname || isChildActive(item.children);
 
-    if (hasChildren) {
-        return (
-            <div className="w-full">
-                <button
-                    onClick={() => setIsOpen(!isOpen)}
-                    className={cn(
-                        "flex items-center justify-between w-full px-4 py-3 rounded-xl text-base font-semibold transition-all duration-200",
-                        "hover:bg-pink-50/50 hover:text-pink-600",
-                        "cursor-pointer",
-                        isActive ? "text-cyan-600" : "text-violet-600",
-                        depth > 0 && "pl-8 text-sm"
-                    )}
-                >
-                    <div className="flex items-center gap-3">
-                        {item.icon && depth === 0 && <item.icon className="w-5 h-5" />}
-                        <span>{item.label}</span>
-                    </div>
-                    <ChevronDown className={cn("w-4 h-4 transition-transform duration-200", isOpen && "rotate-180")} />
-                </button>
-
-                <div className={cn(
-                    "overflow-hidden transition-all duration-300 ease-in-out",
-                    isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
-                )}>
-                    <div className="border-l-2 border-border/50 ml-6 my-1 space-y-1">
-                        {item.children!.map((child, index) => (
-                            <MobileNavItem key={index} item={child} depth={depth + 1} onNavigate={onNavigate} />
-                        ))}
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+  if (hasChildren) {
     return (
+      <div className="w-full">
         <button
-            onClick={() => onNavigate(item.href)}
-            className={cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
-                "transition-all duration-200 ease-out",
-                "hover:bg-pink-50/50 hover:text-pink-600",
-                "cursor-pointer",
-                location.pathname === item.href
-                    ? "text-cyan-600 bg-cyan-50"
-                    : "text-violet-600",
-                depth > 0 && "pl-8 text-sm"
-            )}
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "flex items-center justify-between w-full px-4 py-3 rounded-xl text-base font-semibold transition-all duration-200",
+            "hover:bg-pink-50/50 hover:text-pink-600",
+            "cursor-pointer",
+            isActive ? "text-cyan-600" : "text-violet-600",
+            depth > 0 && "pl-8 text-sm"
+          )}
         >
+          <div className="flex items-center gap-3">
             {item.icon && depth === 0 && <item.icon className="w-5 h-5" />}
             <span>{item.label}</span>
+          </div>
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 transition-transform duration-200",
+              isOpen && "rotate-180"
+            )}
+          />
         </button>
+
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <div className="border-l-2 border-border/50 ml-6 my-1 space-y-1">
+            {item.children!.map((child, index) => (
+              <MobileNavItem
+                key={index}
+                item={child}
+                depth={depth + 1}
+                onNavigate={onNavigate}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
     );
+  }
+
+  return (
+    <button
+      onClick={() => onNavigate(item.href)}
+      className={cn(
+        "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+        "transition-all duration-200 ease-out",
+        "hover:bg-pink-50/50 hover:text-pink-600",
+        "cursor-pointer",
+        location.pathname === item.href
+          ? "text-cyan-600 bg-cyan-50"
+          : "text-violet-600",
+        depth > 0 && "pl-8 text-sm"
+      )}
+    >
+      {item.icon && depth === 0 && <item.icon className="w-5 h-5" />}
+      <span>{item.label}</span>
+    </button>
+  );
 };
 
 const navItems: NavItem[] = [
-    {
-        label: "Rèn luyện",
-        icon: Dumbbell,
+  {
+    label: "Rèn luyện",
+    icon: Dumbbell,
+    children: [
+      { label: "Ngoại ngữ", href: "/training/language" },
+      { label: "Thể thao", href: "/training/sports" },
+      { label: "Nghệ thuật", href: "/training/arts" },
+      { label: "Chuyên môn", href: "/training/professional" },
+      { label: "Đam mê", href: "/training/passion" },
+      { label: "Kiến thức mới", href: "/training/knowledge" },
+    ],
+  },
+  {
+    label: "Giải trí",
+    icon: Music,
+    children: [
+      { label: "Nghe nhạc", href: "/music" },
+      { label: "Xem phim", href: "/movies" },
+      { label: "Đọc truyện", href: "/stories" },
+      { label: "Ôn kỷ niệm", href: "/memories" },
+    ],
+  },
+  {
+    label: "Công việc",
+    icon: Briefcase,
+    children: [
+      {
+        label: "Sản phẩm",
         children: [
-            { label: "Ngoại ngữ", href: "/training/language" },
-            { label: "Thể thao", href: "/training/sports" },
-            { label: "Nghệ thuật", href: "/training/arts" },
-            { label: "Chuyên môn", href: "/training/professional" },
-            { label: "Đam mê", href: "/training/passion" },
-            { label: "Kiến thức mới", href: "/training/knowledge" },
-        ]
-    },
-    {
-        label: "Giải trí",
-        icon: Music,
-        children: [
-            { label: "Nghe nhạc", href: "/music" },
-            { label: "Xem phim", href: "/movies" },
-            { label: "Đọc truyện", href: "/stories" },
-            { label: "Ôn kỷ niệm", href: "/memories" },
-        ]
-    },
-    {
-        label: "Công việc",
-        icon: Briefcase,
-        children: [
-            {
-                label: "Sản phẩm",
-                children: [
-                    { label: "Nhiếp ảnh", href: "/photos" },
-                    { label: "Thiết kế kiến trúc", href: "/architecture" },
-                    { label: "Phát triển ứng dụng", href: "/apps" },
-                ]
-            },
-            {
-                label: "Dự án",
-                children: [
-                    { label: "Mua hộ đồ Nhật", href: "/projects/japan-order" },
-                ]
-            }
-        ]
-    },
-    {
-        label: "Quan điểm",
-        icon: BookOpen,
-        children: [
-            { label: "Blog", href: "/blog" },
-        ]
-    },
-    {
-        label: "Liên hệ",
-        icon: MessageCircle,
-        children: [
-            { label: "Thông tin cá nhân", href: "/about" },
-            { label: "Thông tin liên hệ", href: "/contact-info" },
-            { label: "Địa chỉ sinh sống", href: "/location" },
-            { label: "Kết bạn", href: "/register" },
-            { label: "Để lại lời nhắn", href: "/board" },
-        ]
-    },
-    {
-        label: "Nhà kho",
-        icon: Archive,
-        children: [
-            { label: "Kho App Online", href: "/warehouse/apps" },
-            { label: "Kho phần mềm", href: "/warehouse/software" },
-            { label: "Kho Media", href: "/warehouse/media" },
-            { label: "Kho giáo trình", href: "/warehouse/courses" },
-            { label: "Kho sách", href: "/books" },
-        ]
-    }
+          { label: "Nhiếp ảnh", href: "/photos" },
+          { label: "Thiết kế kiến trúc", href: "/architecture" },
+          { label: "Phát triển ứng dụng", href: "/apps" },
+        ],
+      },
+      {
+        label: "Dự án",
+        children: [{ label: "Mua hộ đồ Nhật", href: "/projects/japan-order" }],
+      },
+    ],
+  },
+  {
+    label: "Quan điểm",
+    icon: BookOpen,
+    children: [{ label: "Blog", href: "/blog" }],
+  },
+  {
+    label: "Liên hệ",
+    icon: MessageCircle,
+    children: [
+      { label: "Thông tin cá nhân", href: "/about" },
+      { label: "Thông tin liên hệ", href: "/contact-info" },
+      { label: "Địa chỉ sinh sống", href: "/location" },
+      { label: "Kết bạn", href: "/register" },
+      { label: "Để lại lời nhắn", href: "/board" },
+    ],
+  },
+  {
+    label: "Nhà kho",
+    icon: Archive,
+    children: [
+      { label: "Kho App Online", href: "/warehouse/apps" },
+      { label: "Kho phần mềm", href: "/warehouse/software" },
+      { label: "Kho Media", href: "/warehouse/media" },
+      { label: "Kho giáo trình", href: "/warehouse/courses" },
+      { label: "Kho sách", href: "/books" },
+    ],
+  },
 ];
 
 interface NavbarProps {
-    className?: string;
+  className?: string;
 }
 
 export function Navbar({ className }: NavbarProps) {
-    const [isOpen, setIsOpen] = useState(false);
-    const [showUserMenu, setShowUserMenu] = useState(false);
-    const location = useLocation();
-    const navigate = useNavigate();
-    const { user, logout, isAuthenticated } = useAuth();
+  const [isOpen, setIsOpen] = useState(false);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, logout, isAuthenticated } = useAuth();
 
-    const handleNavigate = (href?: string) => {
-        if (href) {
-            navigate(href);
-            setIsOpen(false);
-        }
-    };
+  const handleNavigate = (href?: string) => {
+    if (href) {
+      navigate(href);
+      setIsOpen(false);
+    }
+  };
 
-    const handleLogout = () => {
-        logout();
-        setShowUserMenu(false);
-        navigate('/login');
-    };
+  const handleLogout = () => {
+    logout();
+    setShowUserMenu(false);
+    navigate("/login");
+  };
 
-    return (
-        <nav
-            className={cn(
-                "flex items-center justify-between px-10 py-2",
-                // Mobile: Solid background (70%) for readability, Desktop: Glass effect (70%)
-                "bg-background/70 md:bg-background/70",
-                // Enhanced blur and proper border for floating navbar
-                "backdrop-blur-2xl border border-border/80 md:border-border/50",
-                // Shadow for depth and separation
-                "shadow-lg shadow-black/5",
-                "transition-all duration-300 ease-out select-none",
-                className
-            )}
+  return (
+    <nav
+      className={cn(
+        "flex items-center justify-between px-10 py-2",
+        // Mobile: Solid background (70%) for readability, Desktop: Glass effect (70%)
+        "bg-background/70 md:bg-background/70",
+        // Enhanced blur and proper border for floating navbar
+        "backdrop-blur-2xl border border-border/80 md:border-border/50",
+        // Shadow for depth and separation
+        "shadow-lg shadow-black/5",
+        "transition-all duration-300 ease-out select-none",
+        className
+      )}
+    >
+      {/* Logo */}
+      <Link
+        to="/"
+        className="group flex items-center gap-2 text-foreground font-bold text-xl tracking-tight transition-colors hover:text-accent"
+        style={{ fontFamily: "'Outfit', sans-serif" }}
+      >
+        <span className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-sm font-semibold group-hover:scale-105 transition-transform duration-200">
+          ST
+        </span>
+        <span className="hidden sm:inline">Trịnh Minh Sơn</span>
+      </Link>
+
+      {/* Desktop nav links */}
+      <div className="hidden md:flex items-center gap-2">
+        <Link
+          to="/"
+          className={cn(
+            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold",
+            "transition-all duration-200 ease-out hover:bg-secondary/50",
+            "cursor-pointer",
+            location.pathname === "/"
+              ? "text-cyan-600 bg-cyan-50 hover:text-cyan-700"
+              : "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50"
+          )}
         >
-            {/* Logo */}
-            <Link
-                to="/"
-                className="group flex items-center gap-2 text-foreground font-bold text-xl tracking-tight transition-colors hover:text-accent"
-                style={{ fontFamily: "'Outfit', sans-serif" }}
-            >
-                <span className="w-8 h-8 rounded-lg bg-accent flex items-center justify-center text-accent-foreground text-sm font-semibold group-hover:scale-105 transition-transform duration-200">
-                    ST
-                </span>
-                <span className="hidden sm:inline">Trịnh Minh Sơn</span>
-            </Link>
+          <Home className="w-4 h-4" />
+          <span>Home</span>
+        </Link>
 
-            {/* Desktop nav links */}
-            <div className="hidden md:flex items-center gap-2">
-                <Link
-                    to="/"
-                    className={cn(
-                        "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold",
-                        "transition-all duration-200 ease-out hover:bg-secondary/50",
-                        "cursor-pointer",
-                        location.pathname === "/" 
-                            ? "text-cyan-600 bg-cyan-50 hover:text-cyan-700" 
-                            : "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50"
-                    )}
-                >
-                    <Home className="w-4 h-4" />
-                    <span>Home</span>
-                </Link>
-
-                {navItems.map((item, index) => (
-                    <div key={index} className="group relative">
-                        <button className={cn(
-                            "flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold outline-none cursor-pointer",
-                            "transition-all duration-200 ease-out",
-                            "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50 group-hover:bg-violet-50 group-hover:text-violet-700"
-                        )}>
-                            {item.icon && <item.icon className="w-4 h-4" />}
-                            <span>{item.label}</span>
-                            <ChevronDown className="w-3 h-3 opacity-70 transition-transform duration-200 group-hover:rotate-180" />
-                        </button>
-                        
-                        <div className={cn(
-                            "absolute top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out z-50",
-                            index === navItems.length - 1 ? "right-0" : "left-0"
-                        )}>
-                            <div className="w-48 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1">
-                                {item.children?.map((child, childIndex) => (
-                                    child.children ? (
-                                        <div key={childIndex} className="group/sub relative">
-                                            <button className={cn(
-                                                "flex w-full cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none",
-                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                            )}>
-                                                <span>{child.label}</span>
-                                                <ChevronRight className="w-4 h-4" />
-                                            </button>
-                                            <div className={cn(
-                                                "absolute top-0 opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 ease-out",
-                                                index === navItems.length - 1 ? "right-full mr-1" : "left-full ml-1"
-                                            )}>
-                                                <div className="w-48 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1">
-                                                    {child.children.map((subChild, subIndex) => (
-                                                        <button
-                                                            key={subIndex}
-                                                            onClick={() => handleNavigate(subChild.href)}
-                                                            className={cn(
-                                                                "flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-                                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                                            )}
-                                                        >
-                                                            {subChild.label}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        <button
-                                            key={childIndex}
-                                            onClick={() => handleNavigate(child.href)}
-                                            className={cn(
-                                                "flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
-                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                            )}
-                                        >
-                                            {child.label}
-                                        </button>
-                                    )
-                                ))}
-                            </div>
-                        </div>
-                    </div>
-                ))}
-
-                {/* User Menu (Desktop) */}
-                {isAuthenticated && (
-                    <div className="relative group">
-                        <button
-                            onClick={() => setShowUserMenu(!showUserMenu)}
-                            className={cn(
-                                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold outline-none cursor-pointer",
-                                "transition-all duration-200 ease-out",
-                                "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50",
-                                "border border-border/50"
-                            )}
-                        >
-                            <div className="w-6 h-6 rounded-full bg-accent/20 flex items-center justify-center">
-                                <User className="w-4 h-4 text-accent" />
-                            </div>
-                            <span className="hidden lg:inline">{user?.name || 'User'}</span>
-                            <ChevronDown className={cn(
-                                "w-3 h-3 opacity-70 transition-transform duration-200",
-                                showUserMenu && "rotate-180"
-                            )} />
-                        </button>
-
-                        {/* User Dropdown */}
-                        {showUserMenu && (
-                            <>
-                                <div 
-                                    className="fixed inset-0 z-40" 
-                                    onClick={() => setShowUserMenu(false)}
-                                />
-                                <div className="absolute right-0 top-full mt-2 w-56 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1 z-50">
-                                    <div className="px-3 py-2 border-b border-border/50">
-                                        <p className="text-sm font-semibold text-foreground">{user?.name}</p>
-                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                                    </div>
-                                    <div className="py-1">
-                                        {user?.role === 'admin' && (
-                                            <button
-                                                onClick={() => {
-                                                    setShowUserMenu(false);
-                                                    navigate('/admin');
-                                                }}
-                                                className={cn(
-                                                    "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
-                                                    "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                                )}
-                                            >
-                                                <Shield className="w-4 h-4" />
-                                                <span>Admin Panel</span>
-                                            </button>
-                                        )}
-                                        <button
-                                            onClick={() => {
-                                                setShowUserMenu(false);
-                                                navigate('/settings');
-                                            }}
-                                            className={cn(
-                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
-                                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
-                                            )}
-                                        >
-                                            <Settings className="w-4 h-4" />
-                                            <span>Settings</span>
-                                        </button>
-                                    </div>
-                                    <div className="border-t border-border/50 py-1">
-                                        <button
-                                            onClick={handleLogout}
-                                            className={cn(
-                                                "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
-                                                "hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
-                                            )}
-                                        >
-                                            <LogOut className="w-4 h-4" />
-                                            <span>Logout</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </>
-                        )}
-                    </div>
-                )}
-
-                {/* Login Button (Desktop) */}
-                {!isAuthenticated && (
-                    <Link
-                        to="/login"
-                        className={cn(
-                            "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold",
-                            "transition-all duration-200 ease-out",
-                            "text-white bg-accent hover:bg-accent/90",
-                            "cursor-pointer"
-                        )}
-                    >
-                        <User className="w-4 h-4" />
-                        <span>Login</span>
-                    </Link>
-                )}
-            </div>
-
-            {/* Mobile menu button */}
+        {navItems.map((item, index) => (
+          <div key={index} className="group relative">
             <button
-                className={cn(
-                    "md:hidden p-2 rounded-lg text-foreground",
-                    "hover:bg-secondary/50 transition-colors duration-200",
-                    "cursor-pointer",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                )}
-                onClick={() => setIsOpen(!isOpen)}
-                aria-label={isOpen ? "Close menu" : "Open menu"}
-                aria-expanded={isOpen}
+              className={cn(
+                "flex items-center gap-1 px-4 py-2 rounded-lg text-sm font-semibold outline-none cursor-pointer",
+                "transition-all duration-200 ease-out",
+                "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50 group-hover:bg-violet-50 group-hover:text-violet-700"
+              )}
             >
-                {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {item.icon && <item.icon className="w-4 h-4" />}
+              <span>{item.label}</span>
+              <ChevronDown className="w-3 h-3 opacity-70 transition-transform duration-200 group-hover:rotate-180" />
             </button>
 
-            {/* Mobile menu overlay */}
-            {isOpen && (
-                <div
-                    className="fixed inset-x-4 top-[88px] z-40 md:hidden max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl shadow-black/20 border border-border/50 bg-background/98 backdrop-blur-2xl"
-                >
-                    <div className="flex flex-col p-4 gap-1">
-                        <Link
-                            to="/"
-                            onClick={() => setIsOpen(false)}
-                            className={cn(
-                                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold",
-                                "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
-                                "cursor-pointer",
-                                location.pathname === "/" ? "text-cyan-600 bg-cyan-50" : "text-violet-600"
-                            )}
-                        >
-                            <Home className="w-5 h-5" />
-                            <span>Home</span>
-                        </Link>
-                        {navItems.map((item, index) => (
-                            <MobileNavItem key={index} item={item} onNavigate={handleNavigate} />
-                        ))}
-
-                        {/* Mobile User Menu */}
-                        <div className="border-t border-border/50 mt-2 pt-2">
-                            {isAuthenticated ? (
-                                <>
-                                    <div className="px-4 py-3 bg-accent/5 rounded-lg mb-2">
-                                        <p className="text-sm font-semibold text-foreground">{user?.name}</p>
-                                        <p className="text-xs text-muted-foreground">{user?.email}</p>
-                                    </div>
-                                    {user?.role === 'admin' && (
-                                        <button
-                                            onClick={() => {
-                                                setIsOpen(false);
-                                                navigate('/admin');
-                                            }}
-                                            className={cn(
-                                                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
-                                                "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
-                                                "cursor-pointer text-violet-600"
-                                            )}
-                                        >
-                                            <Shield className="w-5 h-5" />
-                                            <span>Admin Panel</span>
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={() => {
-                                            handleLogout();
-                                            setIsOpen(false);
-                                        }}
-                                        className={cn(
-                                            "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
-                                            "transition-all duration-200 ease-out hover:bg-red-50/50 hover:text-red-600",
-                                            "cursor-pointer text-red-600"
-                                        )}
-                                    >
-                                        <LogOut className="w-5 h-5" />
-                                        <span>Logout</span>
-                                    </button>
-                                </>
-                            ) : (
-                                <Link
-                                    to="/login"
-                                    onClick={() => setIsOpen(false)}
-                                    className={cn(
-                                        "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full",
-                                        "transition-all duration-200 ease-out",
-                                        "bg-accent text-white hover:bg-accent/90",
-                                        "cursor-pointer"
-                                    )}
-                                >
-                                    <User className="w-5 h-5" />
-                                    <span>Login</span>
-                                </Link>
-                            )}
+            <div
+              className={cn(
+                "absolute top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 ease-out z-50",
+                index === navItems.length - 1 ? "right-0" : "left-0"
+              )}
+            >
+              <div className="w-48 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1">
+                {item.children?.map((child, childIndex) =>
+                  child.children ? (
+                    <div key={childIndex} className="group/sub relative">
+                      <button
+                        className={cn(
+                          "flex w-full cursor-pointer select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none",
+                          "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                        )}
+                      >
+                        <span>{child.label}</span>
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                      <div
+                        className={cn(
+                          "absolute top-0 opacity-0 invisible group-hover/sub:opacity-100 group-hover/sub:visible transition-all duration-200 ease-out",
+                          index === navItems.length - 1
+                            ? "right-full mr-1"
+                            : "left-full ml-1"
+                        )}
+                      >
+                        <div className="w-48 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1">
+                          {child.children.map((subChild, subIndex) => (
+                            <button
+                              key={subIndex}
+                              onClick={() => handleNavigate(subChild.href)}
+                              className={cn(
+                                "flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+                                "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                              )}
+                            >
+                              {subChild.label}
+                            </button>
+                          ))}
                         </div>
+                      </div>
                     </div>
+                  ) : (
+                    <button
+                      key={childIndex}
+                      onClick={() => handleNavigate(child.href)}
+                      className={cn(
+                        "flex w-full cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+                        "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                      )}
+                    >
+                      {child.label}
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+
+        {/* User Menu (Desktop) */}
+        {isAuthenticated && (
+          <div className="relative group">
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-semibold outline-none cursor-pointer",
+                "transition-all duration-200 ease-out",
+                "text-violet-600 hover:text-pink-600 hover:bg-pink-50/50",
+                "border border-border/50"
+              )}
+            >
+              <div className="w-8 h-8 rounded-full overflow-hidden bg-accent/20 flex items-center justify-center">
+                {user?.avatar ? (
+                  <img
+                    src={`${STATIC_BASE_URL}${user.avatar}`}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <User className="w-5 h-5 text-accent" />
+                )}
+              </div>
+              <span className="hidden lg:inline">{user?.name || "User"}</span>
+              <ChevronDown
+                className={cn(
+                  "w-3 h-3 opacity-70 transition-transform duration-200",
+                  showUserMenu && "rotate-180"
+                )}
+              />
+            </button>
+
+            {/* User Dropdown */}
+            {showUserMenu && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowUserMenu(false)}
+                />
+                <div className="absolute right-0 top-full mt-2 w-56 bg-background/95 backdrop-blur-xl rounded-md border border-border/50 shadow-lg p-1 z-50">
+                  <div className="px-3 py-2 border-b border-border/50">
+                    <p className="text-sm font-semibold text-foreground">
+                      {user?.name}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      {user?.email}
+                    </p>
+                  </div>
+                  <div className="py-1">
+                    {user?.role === "admin" && (
+                      <button
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          navigate("/admin");
+                        }}
+                        className={cn(
+                          "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                          "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                        )}
+                      >
+                        <Shield className="w-4 h-4" />
+                        <span>Admin Panel</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        setShowUserMenu(false);
+                        navigate("/settings");
+                      }}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                        "hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+                      )}
+                    >
+                      <Settings className="w-4 h-4" />
+                      <span>Settings</span>
+                    </button>
+                  </div>
+                  <div className="border-t border-border/50 py-1">
+                    <button
+                      onClick={handleLogout}
+                      className={cn(
+                        "flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm outline-none cursor-pointer",
+                        "hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive"
+                      )}
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span>Logout</span>
+                    </button>
+                  </div>
                 </div>
+              </>
             )}
-        </nav>
-    );
+          </div>
+        )}
+
+        {/* Login Button (Desktop) */}
+        {!isAuthenticated && (
+          <Link
+            to="/login"
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold",
+              "transition-all duration-200 ease-out",
+              "text-white bg-accent hover:bg-accent/90",
+              "cursor-pointer"
+            )}
+          >
+            <User className="w-4 h-4" />
+            <span>Login</span>
+          </Link>
+        )}
+      </div>
+
+      {/* Mobile menu button */}
+      <button
+        className={cn(
+          "md:hidden p-2 rounded-lg text-foreground",
+          "hover:bg-secondary/50 transition-colors duration-200",
+          "cursor-pointer",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+        )}
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Close menu" : "Open menu"}
+        aria-expanded={isOpen}
+      >
+        {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+      </button>
+
+      {/* Mobile menu overlay */}
+      {isOpen && (
+        <div className="fixed inset-x-4 top-[88px] z-40 md:hidden max-h-[80vh] overflow-y-auto rounded-2xl shadow-2xl shadow-black/20 border border-border/50 bg-background/98 backdrop-blur-2xl">
+          <div className="flex flex-col p-4 gap-1">
+            <Link
+              to="/"
+              onClick={() => setIsOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold",
+                "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
+                "cursor-pointer",
+                location.pathname === "/"
+                  ? "text-cyan-600 bg-cyan-50"
+                  : "text-violet-600"
+              )}
+            >
+              <Home className="w-5 h-5" />
+              <span>Home</span>
+            </Link>
+            {navItems.map((item, index) => (
+              <MobileNavItem
+                key={index}
+                item={item}
+                onNavigate={handleNavigate}
+              />
+            ))}
+
+            {/* Mobile User Menu */}
+            <div className="border-t border-border/50 mt-2 pt-2">
+              {isAuthenticated ? (
+                <>
+                  <div className="flex items-center gap-3 px-4 py-3 bg-accent/5 rounded-lg mb-2">
+                    <div className="w-12 h-12 rounded-full overflow-hidden bg-accent/20 flex items-center justify-center flex-shrink-0">
+                      {user?.avatar ? (
+                        <img
+                          src={`${STATIC_BASE_URL}${user.avatar}`}
+                          alt={user.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-6 h-6 text-accent" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground truncate">
+                        {user?.name}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {user?.email}
+                      </p>
+                    </div>
+                  </div>
+                  {user?.role === "admin" && (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        navigate("/admin");
+                      }}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                        "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
+                        "cursor-pointer text-violet-600"
+                      )}
+                    >
+                      <Shield className="w-5 h-5" />
+                      <span>Admin Panel</span>
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      setIsOpen(false);
+                      navigate("/settings");
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                      "transition-all duration-200 ease-out hover:bg-pink-50/50 hover:text-pink-600",
+                      "cursor-pointer text-violet-600"
+                    )}
+                  >
+                    <Settings className="w-5 h-5" />
+                    <span>Settings</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setIsOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full text-left",
+                      "transition-all duration-200 ease-out hover:bg-red-50/50 hover:text-red-600",
+                      "cursor-pointer text-red-600"
+                    )}
+                  >
+                    <LogOut className="w-5 h-5" />
+                    <span>Logout</span>
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  onClick={() => setIsOpen(false)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 rounded-xl text-base font-semibold w-full",
+                    "transition-all duration-200 ease-out",
+                    "bg-accent text-white hover:bg-accent/90",
+                    "cursor-pointer"
+                  )}
+                >
+                  <User className="w-5 h-5" />
+                  <span>Login</span>
+                </Link>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </nav>
+  );
 }

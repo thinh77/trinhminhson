@@ -15,6 +15,8 @@ import {
   type VocabularySet,
 } from "../../services/vocabulary.service";
 import { useAuth } from "../../contexts/AuthContext";
+import { useToast } from "../../contexts/ToastContext";
+import ConfirmDialog from "../../components/ui/confirm-dialog";
 
 // SVG Icons
 const PlusIcon = () => (
@@ -83,6 +85,7 @@ const FACE_OPTIONS = [
 export function JapaneseFlashcardHome() {
   const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { showToast } = useToast();
   const isGuest = !authLoading && !isAuthenticated;
 
   const [activeTab, setActiveTab] = useState<"personal" | "community">(
@@ -92,7 +95,7 @@ export function JapaneseFlashcardHome() {
   const [sets, setSets] = useState<VocabularySet[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deleteConfirm, setDeleteConfirm] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState<number | null>(null);
 
   useEffect(() => {
@@ -121,31 +124,29 @@ export function JapaneseFlashcardHome() {
     e.stopPropagation();
 
     try {
-      const result = await cloneVocabularySet(setId);
-      // After cloning, switch to personal tab and open the new set
-      setActiveTab("personal");
-      navigate(`/learning/study/${result.setId}`);
+      await cloneVocabularySet(setId);
+      showToast("Đã thêm bộ từ vựng vào danh sách cá nhân!", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to clone set");
+      showToast(err instanceof Error ? err.message : "Không thể thêm bộ từ vựng", "error");
     }
   }
 
-  async function handleDelete(id: number, e: React.MouseEvent) {
+  async function handleDelete(id: number, name: string, e: React.MouseEvent) {
     e.preventDefault();
     e.stopPropagation();
+    setDeleteTarget({ id, name });
+  }
 
-    if (deleteConfirm !== id) {
-      setDeleteConfirm(id);
-      setTimeout(() => setDeleteConfirm(null), 3000);
-      return;
-    }
+  async function confirmDelete() {
+    if (!deleteTarget) return;
 
     try {
-      await deleteVocabularySet(id);
-      setSets(sets.filter((s) => s.id !== id));
-      setDeleteConfirm(null);
+      await deleteVocabularySet(deleteTarget.id);
+      setSets(sets.filter((s) => s.id !== deleteTarget.id));
+      setDeleteTarget(null);
+      showToast("Đã xóa bộ từ vựng thành công", "success");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete set");
+      showToast(err instanceof Error ? err.message : "Không thể xóa bộ từ vựng", "error");
     }
   }
 
@@ -417,9 +418,18 @@ export function JapaneseFlashcardHome() {
                           </span>
                         )}
                         {!isGuest && activeTab === "personal" && (
-                          <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${set.is_shared ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
-                            {set.is_shared ? "Đang chia sẻ" : "Cá nhân"}
-                          </span>
+                          <>
+                            {set.original_owner_name ? (
+                              <span className="inline-flex items-center gap-2 px-2.5 py-1 bg-orange-50 text-orange-700 rounded-full font-medium">
+                                <span className="w-2 h-2 rounded-full bg-orange-400" />
+                                {`Tác giả: ${set.original_owner_name}`}
+                              </span>
+                            ) : (
+                              <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${set.is_shared ? "bg-emerald-50 text-emerald-700" : "bg-slate-100 text-slate-700"}`}>
+                                {set.is_shared ? "Đang chia sẻ" : "Cá nhân"}
+                              </span>
+                            )}
+                          </>
                         )}
                         <span className="text-gray-400">{formatDate(set.created_at)}</span>
                         <span className={`px-2.5 py-1 rounded-full text-white text-xs font-medium ${FACE_OPTIONS[set.default_face || 0]?.color}`}>
@@ -502,13 +512,9 @@ export function JapaneseFlashcardHome() {
                       {/* Delete Button - Only for authenticated users */}
                       {!isGuest && activeTab === "personal" && (
                         <button
-                          onClick={(e) => handleDelete(set.id, e)}
-                          className={`p-2.5 rounded-xl transition-all cursor-pointer ${
-                            deleteConfirm === set.id
-                              ? "bg-red-500 text-white shadow-lg shadow-red-500/30"
-                              : "text-gray-400 hover:text-red-500 hover:bg-red-50"
-                          }`}
-                          title={deleteConfirm === set.id ? "Nhấn lần nữa để xác nhận" : "Xóa"}
+                          onClick={(e) => handleDelete(set.id, set.name, e)}
+                          className="p-2.5 rounded-xl transition-all cursor-pointer text-gray-400 hover:text-red-500 hover:bg-red-50"
+                          title="Xóa"
                         >
                           <TrashIcon />
                         </button>
@@ -533,6 +539,18 @@ export function JapaneseFlashcardHome() {
           </div>
         )}
       </main>
+
+      {/* Confirm Delete Dialog */}
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        title="Xóa bộ từ vựng?"
+        message={`Bạn có chắc chắn muốn xóa bộ từ vựng "${deleteTarget?.name}"? Hành động này không thể hoàn tác.`}
+        confirmText="Xóa"
+        cancelText="Hủy"
+        type="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
     </div>
   );
 }

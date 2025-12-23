@@ -20,15 +20,18 @@ import { UnderDevelopmentPage } from "./pages/under-development.tsx";
 import { JapaneseFlashcardHome } from "./pages/learning/flashcard-home.tsx";
 import { JapaneseFlashcardStudy } from "./pages/learning/flashcard-study.tsx";
 import { JapaneseFlashcardUpload } from "./pages/learning/flashcard-upload.tsx";
+import { SettingsPage } from "./pages/settings/settings.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
+import { ToastProvider } from "./contexts/ToastContext.tsx";
 import { ProtectedRoute, AdminRoute } from "./components/ProtectedRoute.tsx";
 import "./index.css";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <AuthProvider>
-      <BlogProvider>
+      <ToastProvider>
+        <BlogProvider>
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -60,6 +63,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
               </ProtectedRoute>
             } />
             
+            {/* Settings route */}
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <SettingsPage />
+              </ProtectedRoute>
+            } />
+            
             {/* Under development routes */}
             <Route path="/training/*" element={<UnderDevelopmentPage />} />
             <Route path="/music" element={<UnderDevelopmentPage />} />
@@ -73,6 +83,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
           </Routes>
         </BrowserRouter>
       </BlogProvider>
+    </ToastProvider>
     </AuthProvider>
   </React.StrictMode>
 );

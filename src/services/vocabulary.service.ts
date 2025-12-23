@@ -7,168 +7,162 @@ import { api, API_BASE_URL } from "./api";
 
 // Helper to get auth token
 function getAuthToken(): string | null {
-    return localStorage.getItem("auth_token");
+  return localStorage.getItem("auth_token");
 }
 
 // Helper to create auth headers
 function getAuthHeaders(): HeadersInit {
-    const token = getAuthToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
+  const token = getAuthToken();
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 // Types
 export interface VocabularySet {
-    id: number;
-    owner_id?: number | null;
-    owner_name?: string | null;
-    is_shared?: boolean;
-    shared_at?: string | null;
-    cloned_from_set_id?: number | null;
-    name: string;
-    description: string;
-    sort_order: number;
-    default_face: number;
-    created_at: string;
-    updated_at: string;
-    card_count: number;
+  id: number;
+  owner_id?: number | null;
+  owner_name?: string | null;
+  original_owner_id?: number | null;
+  original_owner_name?: string | null;
+  is_shared?: boolean;
+  shared_at?: string | null;
+  cloned_from_set_id?: number | null;
+  name: string;
+  description: string;
+  sort_order: number;
+  default_face: number;
+  created_at: string;
+  updated_at: string;
+  card_count: number;
 }
 
 export interface Flashcard {
-    id: number;
-    set_id: number;
-    kanji: string;
-    meaning: string;
-    pronunciation: string;
-    sino_vietnamese: string;
-    example: string;
-    learned: number;
-    created_at: string;
+  id: number;
+  set_id: number;
+  kanji: string;
+  meaning: string;
+  pronunciation: string;
+  sino_vietnamese: string;
+  example: string;
+  learned: number;
+  created_at: string;
 }
 
 export interface VocabularySetWithFlashcards extends VocabularySet {
-    flashcards: Flashcard[];
-    totalCount: number;
-    learnedCount: number;
-    is_owner?: boolean;
+  flashcards: Flashcard[];
+  totalCount: number;
+  learnedCount: number;
+  is_owner?: boolean;
 }
 
 export interface UploadResult {
-    message: string;
-    setId: number;
-    cardCount: number;
+  message: string;
+  setId: number;
+  cardCount: number;
 }
 
 export interface CloneResult {
-    message: string;
-    setId: number;
-    cardCount: number;
+  message: string;
+  setId: number;
+  cardCount: number;
 }
 
 // API Functions
 export async function getVocabularySets(
-    scope?: "personal" | "community"
+  scope?: "personal" | "community"
 ): Promise<VocabularySet[]> {
-    const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
-    return api.get<VocabularySet[]>(`/vocabulary/sets${query}`);
+  const query = scope ? `?scope=${encodeURIComponent(scope)}` : "";
+  return api.get<VocabularySet[]>(`/vocabulary/sets${query}`);
 }
 
 export async function getVocabularySet(
-    id: number | string,
-    includeAll = false
+  id: number | string,
+  includeAll = false
 ): Promise<VocabularySetWithFlashcards> {
-    const query = includeAll ? "?includeAll=true" : "";
-    return api.get<VocabularySetWithFlashcards>(
-        `/vocabulary/sets/${id}${query}`
-    );
+  const query = includeAll ? "?includeAll=true" : "";
+  return api.get<VocabularySetWithFlashcards>(`/vocabulary/sets/${id}${query}`);
 }
 
 export async function uploadVocabularySet(
-    file: File,
-    name: string,
-    description = ""
+  file: File,
+  name: string,
+  description = ""
 ): Promise<UploadResult> {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("name", name);
-    formData.append("description", description);
+  const formData = new FormData();
+  formData.append("file", file);
+  formData.append("name", name);
+  formData.append("description", description);
 
-    const response = await fetch(`${API_BASE_URL}/vocabulary/upload`, {
-        method: "POST",
-        body: formData,
-        headers: getAuthHeaders(), // Don't set Content-Type for FormData
-    });
+  const response = await fetch(`${API_BASE_URL}/vocabulary/upload`, {
+    method: "POST",
+    body: formData,
+    headers: getAuthHeaders(), // Don't set Content-Type for FormData
+  });
 
-    if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Failed to upload file");
-    }
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to upload file");
+  }
 
-    return response.json();
+  return response.json();
 }
 
 export async function updateVocabularySet(
-    id: number,
-    data: Partial<
-        Pick<
-            VocabularySet,
-            "name" | "description" | "default_face" | "is_shared"
-        >
-    >
+  id: number,
+  data: Partial<
+    Pick<VocabularySet, "name" | "description" | "default_face" | "is_shared">
+  >
 ): Promise<VocabularySet> {
-    return api.patch<VocabularySet>(`/vocabulary/sets/${id}`, data);
+  return api.patch<VocabularySet>(`/vocabulary/sets/${id}`, data);
 }
 
 export async function cloneVocabularySet(id: number): Promise<CloneResult> {
-    return api.post<CloneResult>(`/vocabulary/sets/${id}/clone`, {});
+  return api.post<CloneResult>(`/vocabulary/sets/${id}/clone`, {});
 }
 
 export async function deleteVocabularySet(id: number): Promise<void> {
-    await api.delete(`/vocabulary/sets/${id}`);
+  await api.delete(`/vocabulary/sets/${id}`);
 }
 
 export async function reorderVocabularySets(
-    orderedIds: number[]
+  orderedIds: number[]
 ): Promise<void> {
-    await api.post("/vocabulary/sets/reorder", { orderedIds });
+  await api.post("/vocabulary/sets/reorder", { orderedIds });
 }
 
 export async function markFlashcardLearned(
-    id: number,
-    learned: boolean
+  id: number,
+  learned: boolean
 ): Promise<{ message: string; learned: boolean }> {
-    const response = await fetch(
-        `${API_BASE_URL}/vocabulary/flashcards/${id}/learned`,
-        {
-            method: "PATCH",
-            headers: {
-                "Content-Type": "application/json",
-                ...getAuthHeaders(),
-            },
-            body: JSON.stringify({ learned }),
-        }
-    );
-
-    if (!response.ok) {
-        throw new Error("Failed to update flashcard");
+  const response = await fetch(
+    `${API_BASE_URL}/vocabulary/flashcards/${id}/learned`,
+    {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders(),
+      },
+      body: JSON.stringify({ learned }),
     }
+  );
 
-    return response.json();
+  if (!response.ok) {
+    throw new Error("Failed to update flashcard");
+  }
+
+  return response.json();
 }
 
 export async function resetVocabularySet(
-    id: number | string
+  id: number | string
 ): Promise<{ message: string; count: number }> {
-    const response = await fetch(
-        `${API_BASE_URL}/vocabulary/sets/${id}/reset`,
-        {
-            method: "POST",
-            headers: getAuthHeaders(),
-        }
-    );
+  const response = await fetch(`${API_BASE_URL}/vocabulary/sets/${id}/reset`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
 
-    if (!response.ok) {
-        throw new Error("Failed to reset vocabulary set");
-    }
+  if (!response.ok) {
+    throw new Error("Failed to reset vocabulary set");
+  }
 
-    return response.json();
+  return response.json();
 }
