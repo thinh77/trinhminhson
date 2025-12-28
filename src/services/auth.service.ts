@@ -1,13 +1,13 @@
 import { api } from "./api";
 
 export interface LoginData {
-  email: string;
+  username: string;
   password: string;
 }
 
 export interface RegisterData {
   name: string;
-  email: string;
+  username: string;
   password: string;
 }
 
@@ -15,7 +15,7 @@ export interface AuthResponse {
   token: string;
   user: {
     id: number;
-    email: string;
+    username: string;
     name: string;
     avatar?: string | null;
     role: string;
@@ -25,7 +25,7 @@ export interface AuthResponse {
 
 export interface User {
   id: number;
-  email: string;
+  username: string;
   name: string;
   avatar?: string | null;
   role: string;

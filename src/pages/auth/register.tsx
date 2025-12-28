@@ -10,20 +10,20 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, Loader2, Mail, Lock, User, Home } from "lucide-react";
+import { Eye, EyeOff, UserPlus, AlertCircle, CheckCircle2, Loader2, Lock, User, Home } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Register() {
   const [formData, setFormData] = useState({
     name: "",
-    email: "",
+    username: "",
     password: "",
     confirmPassword: "",
   });
   const [errors, setErrors] = useState({
     name: "",
-    email: "",
+    username: "",
     password: "",
     confirmPassword: "",
   });
@@ -53,13 +53,15 @@ export default function Register() {
     return "";
   };
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) {
-      return "Vui lòng nhập email";
+  const validateUsername = (username: string) => {
+    if (!username) {
+      return "Vui lòng nhập tên đăng nhập";
     }
-    if (!emailRegex.test(email)) {
-      return "Vui lòng nhập địa chỉ email hợp lệ";
+    if (username.length < 3) {
+      return "Tên đăng nhập phải có ít nhất 3 ký tự";
+    }
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      return "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới";
     }
     return "";
   };
@@ -99,8 +101,8 @@ export default function Register() {
       case "name":
         error = validateName(formData.name);
         break;
-      case "email":
-        error = validateEmail(formData.email);
+      case "username":
+        error = validateUsername(formData.username);
         break;
       case "password":
         error = validatePassword(formData.password);
@@ -117,18 +119,18 @@ export default function Register() {
 
     // Validate all fields
     const nameError = validateName(formData.name);
-    const emailError = validateEmail(formData.email);
+    const usernameError = validateUsername(formData.username);
     const passwordError = validatePassword(formData.password);
     const confirmPasswordError = validateConfirmPassword(formData.confirmPassword);
 
     setErrors({
       name: nameError,
-      email: emailError,
+      username: usernameError,
       password: passwordError,
       confirmPassword: confirmPasswordError,
     });
 
-    if (nameError || emailError || passwordError || confirmPasswordError) {
+    if (nameError || usernameError || passwordError || confirmPasswordError) {
       return;
     }
 
@@ -136,7 +138,7 @@ export default function Register() {
     setRegisterError("");
 
     try {
-      await register(formData.name, formData.email, formData.password);
+      await register(formData.name, formData.username, formData.password);
       setSuccessMessage("Tài khoản đã được tạo thành công! Đang chuyển hướng...");
       setTimeout(() => {
         navigate("/", { replace: true });
@@ -276,46 +278,46 @@ export default function Register() {
               )}
             </div>
 
-            {/* Email Field */}
+            {/* Username Field */}
             <div>
               <label
-                htmlFor="email"
+                htmlFor="username"
                 className="block text-sm font-semibold text-slate-900 mb-2 font-['Open_Sans',sans-serif]"
               >
-                Địa chỉ Email
+                Tên đăng nhập
               </label>
               <div className="relative">
                 <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">
-                  <Mail className="w-5 h-5" />
+                  <User className="w-5 h-5" />
                 </div>
                 <Input
-                  id="email"
-                  type="email"
-                  autoComplete="email"
-                  value={formData.email}
+                  id="username"
+                  type="text"
+                  autoComplete="username"
+                  value={formData.username}
                   onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
+                    setFormData({ ...formData, username: e.target.value })
                   }
-                  onBlur={() => handleBlur("email")}
+                  onBlur={() => handleBlur("username")}
                   className={cn(
                     "h-12 w-full pl-11 pr-4 bg-white border transition-all duration-200 font-['Open_Sans',sans-serif]",
-                    errors.email
+                    errors.username
                       ? "border-red-500 focus:ring-2 focus:ring-red-500 focus:border-red-500"
                       : "border-slate-200 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 hover:border-slate-300"
                   )}
-                  placeholder="you@example.com"
-                  aria-invalid={!!errors.email}
-                  aria-describedby={errors.email ? "email-error" : undefined}
+                  placeholder="username123"
+                  aria-invalid={!!errors.username}
+                  aria-describedby={errors.username ? "username-error" : undefined}
                 />
               </div>
-              {errors.email && (
+              {errors.username && (
                 <p
-                  id="email-error"
+                  id="username-error"
                   className="mt-2 text-sm text-red-600 font-['Open_Sans',sans-serif] flex items-center gap-1.5"
                   role="alert"
                 >
                   <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                  <span>{errors.email}</span>
+                  <span>{errors.username}</span>
                 </p>
               )}
             </div>

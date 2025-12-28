@@ -376,7 +376,7 @@ export function Navbar({ className }: NavbarProps) {
                       {user?.name}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      {user?.email}
+                      @{user?.username}
                     </p>
                   </div>
                   <div className="py-1">
@@ -507,7 +507,7 @@ export function Navbar({ className }: NavbarProps) {
                         {user?.name}
                       </p>
                       <p className="text-xs text-muted-foreground truncate">
-                        {user?.email}
+                        @{user?.username}
                       </p>
                     </div>
                   </div>

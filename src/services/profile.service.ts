@@ -7,7 +7,7 @@ import { api, API_BASE_URL } from "./api";
 
 export interface UserProfile {
   id: number;
-  email: string;
+  username: string;
   name: string;
   avatar: string | null;
   role: string;

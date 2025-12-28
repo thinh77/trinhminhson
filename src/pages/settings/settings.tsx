@@ -335,13 +335,13 @@ export function SettingsPage() {
                 />
               </div>
 
-              {/* Email Field (Read-only) */}
+              {/* Username Field (Read-only) */}
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Email
+                <label htmlFor="username" className="block text-sm font-medium text-gray-700 mb-2">
+                  Tên đăng nhập
                 </label>
                 <div className="px-4 py-3 rounded-xl bg-gray-50 text-gray-600 border border-gray-200">
-                  {profile?.email}
+                  @{profile?.username}
                 </div>
               </div>
             </div>
