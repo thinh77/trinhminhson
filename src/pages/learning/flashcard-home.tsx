@@ -5,7 +5,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   getVocabularySets,
   deleteVocabularySet,
@@ -83,7 +83,6 @@ const FACE_OPTIONS = [
 ];
 
 export function JapaneseFlashcardHome() {
-  const navigate = useNavigate();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { showToast } = useToast();
   const isGuest = !authLoading && !isAuthenticated;
