@@ -220,10 +220,10 @@ export function BoardPage() {
 
   // Handle selecting a note from overlay
   const handleSelectFromOverlay = (note: Note) => {
-    // Move selected note to the end of array (top of stack)
+    // Move selected note to the beginning of array (top of stack, since z-index = notes.length - index)
     setNotes(prev => {
       const filtered = prev.filter(n => n.id !== note.id);
-      return [...filtered, note];
+      return [note, ...filtered];
     });
     
     // Close overlay
@@ -452,8 +452,8 @@ export function BoardPage() {
               animationDelay: `${index * 50}ms`,
               touchAction: 'none',
               willChange: draggingNoteId === note.id ? 'left, top' : 'auto',
-              // z-index based on array order - newer notes (higher index) appear on top
-              zIndex: draggingNoteId === note.id ? 50 : (isHighlighted ? 40 : index + 1),
+              // z-index based on creation time - newer notes (start of array from API) appear on top
+              zIndex: draggingNoteId === note.id ? 50 : (isHighlighted ? 40 : notes.length - index),
               // Glowing border effect for highlighted note
               boxShadow: isHighlighted 
                 ? '0 0 0 3px #fbbf24, 0 0 20px 5px rgba(251, 191, 36, 0.5), 0 25px 50px -12px rgba(0, 0, 0, 0.25)' 
@@ -528,7 +528,7 @@ export function BoardPage() {
             </div>
 
             {/* Note content */}
-            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words select-none">
+            <div className="text-sm leading-relaxed whitespace-pre-wrap break-words select-text">
               <span
                 style={{ 
                   color: note.textColor,

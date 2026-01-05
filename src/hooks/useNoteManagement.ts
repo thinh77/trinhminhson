@@ -65,7 +65,8 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
         updatedAt: createdNote.updatedAt ? new Date(createdNote.updatedAt) : undefined,
       };
       
-      setNotes((prev) => [...prev, newNoteWithDate]);
+      // Add to beginning of array so newest notes appear on top (matching API order)
+      setNotes((prev) => [newNoteWithDate, ...prev]);
       
       // Highlight the newly created note
       setHighlightedNoteId(createdNote.id);
