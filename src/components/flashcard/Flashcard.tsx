@@ -4,8 +4,9 @@
  * Design: Claymorphism with vibrant face colors
  */
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import type { Flashcard as FlashcardType } from "../../services/vocabulary.service";
+import { FACE_COLORS } from "@/constants/flashcardStyles";
 
 const FACE_CONFIG = [
   { label: "Kanji", field: "kanji" as const, color: "from-violet-500 to-purple-600", bgLight: "bg-violet-50", textColor: "text-violet-600" },
@@ -18,20 +19,29 @@ const FACE_CONFIG = [
 type FaceField = "kanji" | "meaning" | "pronunciation" | "sino_vietnamese" | "example";
 
 interface FlashcardProps {
-  card: Pick<FlashcardType, FaceField>;
+  card: FlashcardType;
   currentFace: number;
+  faceCount: number;
   onNextFace: () => void;
   onSetFace: (index: number) => void;
   showFaceIndicators?: boolean;
 }
 
-function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicators = true }: FlashcardProps) {
+function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFaceIndicators = true }: FlashcardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
   const [isTouchDevice, setIsTouchDevice] = useState(false);
 
   const minSwipeDistance = 50;
+
+  const faceConfigs = useMemo(() => {
+    return Array.from({length: faceCount}, (_, i) => ({
+      label: `Mặt ${i + 1}`,
+      field: `face${i + 1}` as keyof FlashcardType,
+      ...FACE_COLORS[i % FACE_COLORS.length],
+    }))
+  }, [faceCount]);
 
   function handleTouchStart(e: React.TouchEvent) {
     setIsTouchDevice(true);
@@ -68,8 +78,9 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
     }
   }
 
-  const currentConfig = FACE_CONFIG[currentFace];
-  const content = card[currentConfig.field] || "—";
+  const safeCurrentFace = Math.min(currentFace, faceCount - 1);
+  const currentConfig = faceConfigs[safeCurrentFace];
+  const content = (card[currentConfig.field] as string) || "—";
 
   // Check if content contains Japanese characters
   const isJapaneseContent = ["kanji", "pronunciation", "example"].includes(currentConfig.field);
@@ -99,16 +110,8 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
             {/* Content */}
             <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
               <p 
-                className={`text-center break-words leading-relaxed
-                            ${isJapaneseContent ? "font-['Noto_Sans_JP',_'Noto_Serif_JP',_sans-serif]" : ""}
-                            ${currentConfig.field === "kanji" 
-                              ? "text-6xl sm:text-7xl lg:text-8xl font-bold text-gray-800" 
-                              : currentConfig.field === "example"
-                                ? "text-1xl sm:text-2xl lg:text-3xl text-gray-700 leading-relaxed"
-                                : currentConfig.field === "pronunciation"
-                                  ? "text-4xl sm:text-5xl lg:text-6xl font-medium text-gray-800"
-                                  : "text-3xl sm:text-4xl lg:text-5xl font-medium text-gray-800"
-                            }`}
+                className="text-center break-words leading-relaxed text-3xl sm:text-4xl lg:text-5xl font-medium text-gray-800"
+                            
                 style={isJapaneseContent ? { fontFamily: "'Noto Sans JP', 'Noto Serif JP', sans-serif" } : {}}
               >
                 {content}
@@ -130,20 +133,20 @@ function Flashcard({ card, currentFace, onNextFace, onSetFace, showFaceIndicator
       {/* Face Indicators - Only shown when showFaceIndicators is true */}
       {showFaceIndicators && (
         <div className="flex items-center justify-center gap-2 mt-6">
-          {FACE_CONFIG.map((config, index) => (
+          {faceConfigs.map((config, index) => (
             <button
-              key={config.label}
+              key={index}
               onClick={(e) => {
                 e.stopPropagation();
                 onSetFace(index);
               }}
               className={`group relative cursor-pointer transition-all duration-200
-                          ${currentFace === index ? "scale-110" : "hover:scale-105"}`}
+                          ${safeCurrentFace === index ? "scale-110" : "hover:scale-105"}`}
               title={config.label}
             >
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold
                               transition-all duration-200
-                              ${currentFace === index 
+                              ${safeCurrentFace === index 
                                 ? `bg-gradient-to-br ${config.color} text-white shadow-lg` 
                                 : `${config.bgLight} ${config.textColor} hover:shadow-md`
                               }`}>

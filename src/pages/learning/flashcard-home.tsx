@@ -74,13 +74,26 @@ const ArrowRightIcon = () => (
   </svg>
 );
 
-const FACE_OPTIONS = [
-  { value: 0, label: "Kanji", color: "bg-violet-500" },
-  { value: 1, label: "Nghĩa", color: "bg-emerald-500" },
-  { value: 2, label: "Phiên âm", color: "bg-amber-500" },
-  { value: 3, label: "Hán Việt", color: "bg-fuchsia-500" },
-  { value: 4, label: "Ví dụ", color: "bg-sky-500" },
-];
+function getFaceOptions(faceCount: number) {
+  const colors = [
+    "bg-violet-500",
+    "bg-emerald-500", 
+    "bg-amber-500",
+    "bg-fuchsia-500",
+    "bg-sky-500",
+    "bg-rose-500",
+    "bg-lime-500",
+    "bg-cyan-500",
+    "bg-indigo-500",
+    "bg-orange-500",
+  ];
+  
+  return Array.from({ length: faceCount }, (_, i) => ({
+    value: i,
+    label: `Mặt ${i + 1}`,
+    color: colors[i % colors.length],
+  }));
+}
 
 export function JapaneseFlashcardHome() {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -431,8 +444,8 @@ export function JapaneseFlashcardHome() {
                           </>
                         )}
                         <span className="text-gray-400">{formatDate(set.created_at)}</span>
-                        <span className={`px-2.5 py-1 rounded-full text-white text-xs font-medium ${FACE_OPTIONS[set.default_face || 0]?.color}`}>
-                          {FACE_OPTIONS[set.default_face || 0]?.label}
+                        <span className={`px-2.5 py-1 rounded-full text-white text-xs font-medium ${getFaceOptions(set.face_count || 5)[set.default_face || 0]?.color}`}>
+                          {getFaceOptions(set.face_count || 5)[set.default_face || 0]?.label}
                         </span>
                       </div>
                     </div>
@@ -486,7 +499,7 @@ export function JapaneseFlashcardHome() {
                               <p className="px-4 py-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                                 Mặt hiển thị đầu tiên
                               </p>
-                              {FACE_OPTIONS.map((option) => {
+                              {getFaceOptions(set.face_count || 5).map((option) => {
                                 const isActive = (set.default_face || 0) === option.value;
                                 return (
                                   <button

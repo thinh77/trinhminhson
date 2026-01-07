@@ -30,6 +30,7 @@ export interface VocabularySet {
   description: string;
   sort_order: number;
   default_face: number;
+  face_count: number;
   created_at: string;
   updated_at: string;
   card_count: number;
@@ -38,11 +39,16 @@ export interface VocabularySet {
 export interface Flashcard {
   id: number;
   set_id: number;
-  kanji: string;
-  meaning: string;
-  pronunciation: string;
-  sino_vietnamese: string;
-  example: string;
+  face1?: string;
+  face2?: string;
+  face3?: string;
+  face4?: string;
+  face5?: string;
+  face6?: string;
+  face7?: string;
+  face8?: string;
+  face9?: string;
+  face10?: string;
   learned: number;
   created_at: string;
 }
@@ -58,6 +64,7 @@ export interface UploadResult {
   message: string;
   setId: number;
   cardCount: number;
+  faceCount: number;
 }
 
 export interface CloneResult {

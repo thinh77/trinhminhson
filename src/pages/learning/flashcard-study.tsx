@@ -72,6 +72,7 @@ export function JapaneseFlashcardStudy() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentFace, setCurrentFace] = useState(0);
   const [defaultFace, setDefaultFace] = useState(0);
+  const [faceCount, setFaceCount] = useState(5);
   const [shuffled, setShuffled] = useState(false);
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [totalCount, setTotalCount] = useState(0);
@@ -94,6 +95,7 @@ export function JapaneseFlashcardStudy() {
       const face = data.default_face || 0;
       setDefaultFace(face);
       setCurrentFace(face);
+      setFaceCount(data.face_count || 5);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load vocabulary set");
     } finally {
@@ -162,8 +164,8 @@ export function JapaneseFlashcardStudy() {
   }, [cards.length, currentIndex, defaultFace]);
 
   const nextFace = useCallback(() => {
-    setCurrentFace((prev) => (prev + 1) % 5);
-  }, []);
+    setCurrentFace((prev) => (prev + 1) % faceCount);
+  }, [faceCount]);
 
   const setFace = useCallback((face: number) => {
     setCurrentFace(face);
@@ -445,6 +447,7 @@ export function JapaneseFlashcardStudy() {
             <Flashcard
               card={currentCard}
               currentFace={currentFace}
+              faceCount={faceCount}
               onNextFace={nextFace}
               onSetFace={setFace}
               showFaceIndicators={false}
@@ -528,6 +531,7 @@ export function JapaneseFlashcardStudy() {
           <Flashcard
             card={currentCard}
             currentFace={currentFace}
+            faceCount={faceCount}
             onNextFace={nextFace}
             onSetFace={setFace}
           />
