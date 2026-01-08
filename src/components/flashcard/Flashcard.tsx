@@ -8,16 +8,6 @@ import { useMemo, useRef, useState } from "react";
 import type { Flashcard as FlashcardType } from "../../services/vocabulary.service";
 import { FACE_COLORS } from "@/constants/flashcardStyles";
 
-const FACE_CONFIG = [
-  { label: "Kanji", field: "kanji" as const, color: "from-violet-500 to-purple-600", bgLight: "bg-violet-50", textColor: "text-violet-600" },
-  { label: "Nghĩa", field: "meaning" as const, color: "from-emerald-500 to-teal-600", bgLight: "bg-emerald-50", textColor: "text-emerald-600" },
-  { label: "Phiên âm", field: "pronunciation" as const, color: "from-amber-500 to-orange-600", bgLight: "bg-amber-50", textColor: "text-amber-600" },
-  { label: "Hán Việt", field: "sino_vietnamese" as const, color: "from-fuchsia-500 to-pink-600", bgLight: "bg-fuchsia-50", textColor: "text-fuchsia-600" },
-  { label: "Ví dụ", field: "example" as const, color: "from-sky-500 to-blue-600", bgLight: "bg-sky-50", textColor: "text-sky-600" },
-];
-
-type FaceField = "kanji" | "meaning" | "pronunciation" | "sino_vietnamese" | "example";
-
 interface FlashcardProps {
   card: FlashcardType;
   currentFace: number;
