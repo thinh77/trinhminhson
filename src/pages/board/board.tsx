@@ -208,10 +208,16 @@ export function BoardPage() {
     handleNoteTouchStart(noteId, e);
   };
 
-  // Find notes that overlap at a given point (canvas coordinates)
-  const findOverlappingNotes = (canvasX: number, canvasY: number): Note[] => {
+  // Find notes that overlap with a given note (bounding box intersection)
+  const findOverlappingNotes = (targetNote: Note): Note[] => {
     const NOTE_WIDTH = 192; // w-48 = 12rem = 192px
     const NOTE_HEIGHT = 192; // min-h-48
+
+    // Target note bounding box
+    const targetLeft = targetNote.x;
+    const targetTop = targetNote.y;
+    const targetRight = targetLeft + NOTE_WIDTH;
+    const targetBottom = targetTop + NOTE_HEIGHT;
 
     return notes.filter((note) => {
       const noteLeft = note.x;
@@ -219,22 +225,23 @@ export function BoardPage() {
       const noteRight = noteLeft + NOTE_WIDTH;
       const noteBottom = noteTop + NOTE_HEIGHT;
 
+      // Check if two rectangles intersect
       return (
-        canvasX >= noteLeft &&
-        canvasX <= noteRight &&
-        canvasY >= noteTop &&
-        canvasY <= noteBottom
+        targetLeft < noteRight &&
+        targetRight > noteLeft &&
+        targetTop < noteBottom &&
+        targetBottom > noteTop
       );
     });
   };
 
-  // Show overlapping notes for a specific note position
+  // Show overlapping notes for a specific note
   const showOverlappingNotes = (e: React.MouseEvent, note: Note) => {
     e.stopPropagation();
     e.preventDefault();
 
-    // Find all notes at this note's position
-    const overlapping = findOverlappingNotes(note.x + 96, note.y + 96); // Center of note
+    // Find all notes that intersect with this note's bounding box
+    const overlapping = findOverlappingNotes(note);
 
     // Only show overlay if there are multiple overlapping notes
     if (overlapping.length > 1) {
@@ -534,10 +541,7 @@ export function BoardPage() {
                     onTouchEnd={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
-                      const overlapping = findOverlappingNotes(
-                        note.x + 96,
-                        note.y + 96
-                      );
+                      const overlapping = findOverlappingNotes(note);
                       if (overlapping.length > 1) {
                         setOverlappingNotes(overlapping);
                         setOverlayPosition({
