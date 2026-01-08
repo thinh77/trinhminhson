@@ -112,4 +112,18 @@ export const notesApi = {
     });
     if (!response.ok) throw new Error("Failed to delete all notes");
   },
+
+  // Reorder notes (admin only)
+  reorderNotes: async (noteIds: number[]): Promise<Note[]> => {
+    const response = await fetch(`${API_BASE_URL}/notes/reorder`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ noteIds }),
+    });
+    if (!response.ok) throw new Error("Failed to reorder notes");
+    const data = await response.json();
+    return data.data;
+  },
 };

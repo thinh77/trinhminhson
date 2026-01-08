@@ -181,6 +181,90 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
     }
   }, [notes]);
 
+  // Bring note to front (admin only)
+  const bringToFront = useCallback(async (noteId: number) => {
+    const noteIndex = notes.findIndex(n => n.id === noteId);
+    if (noteIndex === -1 || noteIndex === 0) return; // Already at front or not found
+    
+    try {
+      // Move note to front of array
+      const newOrder = [
+        notes[noteIndex],
+        ...notes.slice(0, noteIndex),
+        ...notes.slice(noteIndex + 1)
+      ];
+      
+      // Update local state immediately for responsiveness
+      setNotes(newOrder);
+      
+      // Save order to backend
+      const noteIds = newOrder.map(n => n.id);
+      await notesApi.reorderNotes(noteIds);
+    } catch (error) {
+      console.error("Failed to bring note to front:", error);
+      // Reload notes to restore correct order on error
+      loadNotes();
+      throw error;
+    }
+  }, [notes, loadNotes]);
+
+  // Send note to back (admin only)
+  const sendToBack = useCallback(async (noteId: number) => {
+    const noteIndex = notes.findIndex(n => n.id === noteId);
+    if (noteIndex === -1 || noteIndex === notes.length - 1) return; // Already at back or not found
+    
+    try {
+      // Move note to back of array
+      const newOrder = [
+        ...notes.slice(0, noteIndex),
+        ...notes.slice(noteIndex + 1),
+        notes[noteIndex]
+      ];
+      
+      // Update local state immediately for responsiveness
+      setNotes(newOrder);
+      
+      // Save order to backend
+      const noteIds = newOrder.map(n => n.id);
+      await notesApi.reorderNotes(noteIds);
+    } catch (error) {
+      console.error("Failed to send note to back:", error);
+      // Reload notes to restore correct order on error
+      loadNotes();
+      throw error;
+    }
+  }, [notes, loadNotes]);
+
+  // Reorder overlapping notes by providing new order of IDs (admin only)
+  // This only reorders the specified notes, keeping other notes in place
+  const reorderNotes = useCallback(async (noteIds: number[]) => {
+    try {
+      // Get the notes being reordered
+      const notesToReorder = noteIds.map(id => notes.find(n => n.id === id)!).filter(Boolean);
+      
+      // Get the indices of these notes in the original array
+      const originalIndices = noteIds.map(id => notes.findIndex(n => n.id === id)).sort((a, b) => a - b);
+      
+      // Create new order by placing reordered notes at the same positions
+      const newOrder = [...notes];
+      notesToReorder.forEach((note, idx) => {
+        newOrder[originalIndices[idx]] = note;
+      });
+      
+      // Update local state immediately for responsiveness
+      setNotes(newOrder);
+      
+      // Save order to backend - send full order
+      const allNoteIds = newOrder.map(n => n.id);
+      await notesApi.reorderNotes(allNoteIds);
+    } catch (error) {
+      console.error("Failed to reorder notes:", error);
+      // Reload notes to restore correct order on error
+      loadNotes();
+      throw error;
+    }
+  }, [notes, loadNotes]);
+
   return {
     notes,
     setNotes,
@@ -194,5 +278,8 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
     handleAddContent,
     clearHighlight,
     handleClearAll,
+    bringToFront,
+    sendToBack,
+    reorderNotes,
   };
 }

@@ -1,27 +1,45 @@
 import { useState, useRef, useEffect } from "react";
 import { X, Type, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { textColors, fontFamilies, fontWeights, fontSizes } from "@/constants/noteStyles";
+import { renderTextWithLinks } from "@/lib/renderTextWithLinks";
+import {
+  textColors,
+  fontFamilies,
+  fontWeights,
+  fontSizes,
+} from "@/constants/noteStyles";
 import type { Note } from "@/types/note";
 
 interface EditNoteModalProps {
   note: Note;
   onClose: () => void;
-  onSave: (noteId: number, additionalContent: string, textColor: string, fontFamily: string, fontWeight: string, fontSize: string) => Promise<void>;
+  onSave: (
+    noteId: number,
+    additionalContent: string,
+    textColor: string,
+    fontFamily: string,
+    fontWeight: string,
+    fontSize: string
+  ) => Promise<void>;
 }
 
 export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
   const [additionalContent, setAdditionalContent] = useState("");
-  
+
   // Get the most recent text color (from last segment or original note)
-  const lastTextColor = note.textSegments && note.textSegments.length > 0 
-    ? note.textSegments[note.textSegments.length - 1].textColor 
-    : note.textColor;
-  
+  const lastTextColor =
+    note.textSegments && note.textSegments.length > 0
+      ? note.textSegments[note.textSegments.length - 1].textColor
+      : note.textColor;
+
   // Filter out the last used color from available colors
-  const availableTextColors = textColors.filter(color => color.color !== lastTextColor);
-  
-  const [textColor, setTextColor] = useState(availableTextColors[0]?.color || textColors[0].color);
+  const availableTextColors = textColors.filter(
+    (color) => color.color !== lastTextColor
+  );
+
+  const [textColor, setTextColor] = useState(
+    availableTextColors[0]?.color || textColors[0].color
+  );
   const [fontFamily, setFontFamily] = useState(fontFamilies[0].value);
   const [fontWeight, setFontWeight] = useState(fontWeights[1].value);
   const [fontSize, setFontSize] = useState(fontSizes[1].value);
@@ -39,16 +57,23 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
 
     setIsSaving(true);
     try {
-      console.log('Saving additional content:', {
+      console.log("Saving additional content:", {
         noteId: note.id,
         additionalContent,
         textColor,
         fontFamily,
         fontWeight,
-        fontSize
+        fontSize,
       });
-      await onSave(note.id, additionalContent, textColor, fontFamily, fontWeight, fontSize);
-      console.log('Content saved successfully');
+      await onSave(
+        note.id,
+        additionalContent,
+        textColor,
+        fontFamily,
+        fontWeight,
+        fontSize
+      );
+      console.log("Content saved successfully");
       onClose();
     } catch (error) {
       console.error("Failed to update note:", error);
@@ -59,11 +84,11 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-[100] bg-black/40 backdrop-blur-sm md:flex md:items-center md:justify-center md:p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className={cn(
           "bg-white flex flex-col",
           "h-full w-full md:h-auto md:w-full md:max-w-md md:max-h-[90vh]",
@@ -92,23 +117,23 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
             <label className="text-sm font-medium text-foreground mb-2 block">
               Nội dung hiện tại
             </label>
-            <div 
+            <div
               className="relative p-4 rounded-sm shadow-md"
               style={{ backgroundColor: note.color }}
             >
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-amber-200/60 rounded-sm" />
-              
+
               {/* Display existing content with segments */}
               <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                <span 
-                  style={{ 
+                <span
+                  style={{
                     color: note.textColor,
                     fontFamily: note.fontFamily,
                     fontWeight: note.fontWeight,
                     fontSize: note.fontSize,
                   }}
                 >
-                  {note.content}
+                  {renderTextWithLinks(note.content)}
                 </span>
                 {note.textSegments?.map((segment, idx) => (
                   <span
@@ -120,7 +145,7 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                       fontSize: segment.fontSize,
                     }}
                   >
-                    {segment.content}
+                    {renderTextWithLinks(segment.content)}
                   </span>
                 ))}
               </div>
@@ -133,12 +158,12 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
               <Plus className="w-4 h-4" />
               Nội dung thêm vào
             </label>
-            <div 
+            <div
               className="relative p-4 rounded-sm shadow-md"
               style={{ backgroundColor: note.color }}
             >
               <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-amber-200/60 rounded-sm" />
-              
+
               <textarea
                 ref={textareaRef}
                 value={additionalContent}
@@ -149,11 +174,14 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                   "placeholder:text-gray-400 focus:outline-none",
                   "text-base"
                 )}
-                style={{ 
+                style={{
                   color: textColor,
                   fontFamily: fontFamily,
                   fontWeight: fontWeight,
-                  fontSize: window.innerWidth < 768 ? Math.max(16, parseInt(fontSize)) + 'px' : fontSize,
+                  fontSize:
+                    window.innerWidth < 768
+                      ? Math.max(16, parseInt(fontSize)) + "px"
+                      : fontSize,
                 }}
                 maxLength={200}
               />
@@ -179,7 +207,8 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                     "w-10 h-10 md:w-8 md:h-8 rounded-lg transition-all duration-200 cursor-pointer",
                     "active:scale-95 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2",
                     "flex items-center justify-center text-white text-xs font-bold",
-                    textColor === color.color && "ring-2 ring-foreground ring-offset-2 scale-110"
+                    textColor === color.color &&
+                      "ring-2 ring-foreground ring-offset-2 scale-110"
                   )}
                   style={{ backgroundColor: color.color }}
                   aria-label={color.name}
@@ -206,7 +235,8 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                     "px-3 py-2 md:py-1.5 rounded-lg transition-all duration-200 cursor-pointer",
                     "active:bg-secondary focus:outline-none",
                     "text-sm border border-border",
-                    fontFamily === font.value && "ring-2 ring-foreground bg-secondary"
+                    fontFamily === font.value &&
+                      "ring-2 ring-foreground bg-secondary"
                   )}
                   style={{ fontFamily: font.value }}
                   title={font.name}
@@ -232,7 +262,8 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                     "px-3 py-2 md:py-1.5 rounded-lg transition-all duration-200 cursor-pointer",
                     "active:bg-secondary focus:outline-none",
                     "text-sm border border-border",
-                    fontWeight === weight.value && "ring-2 ring-foreground bg-secondary"
+                    fontWeight === weight.value &&
+                      "ring-2 ring-foreground bg-secondary"
                   )}
                   style={{ fontWeight: weight.value }}
                   title={weight.name}
@@ -258,7 +289,8 @@ export function EditNoteModal({ note, onClose, onSave }: EditNoteModalProps) {
                     "px-3 py-2 md:py-1.5 rounded-lg transition-all duration-200 cursor-pointer",
                     "active:bg-secondary focus:outline-none",
                     "text-sm border border-border",
-                    fontSize === size.value && "ring-2 ring-foreground bg-secondary"
+                    fontSize === size.value &&
+                      "ring-2 ring-foreground bg-secondary"
                   )}
                   title={size.name}
                 >
