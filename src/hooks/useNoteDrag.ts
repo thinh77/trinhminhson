@@ -90,14 +90,38 @@ export function useNoteDrag({
       const noteId = draggingNoteRef.current;
       const position = { ...latestPositionRef.current };
       
-      // Reset state first
+      // Calculate new order BEFORE resetting state
+      const currentNotes = notesRef.current;
+      const noteIndex = currentNotes.findIndex(n => n.id === noteId);
+      const shouldReorder = noteIndex > 0;
+      
+      // Calculate new order: dragged note goes to front
+      const newOrder = shouldReorder 
+        ? [
+            currentNotes[noteIndex],
+            ...currentNotes.slice(0, noteIndex),
+            ...currentNotes.slice(noteIndex + 1)
+          ]
+        : currentNotes;
+      
+      // Reset state
       draggingNoteRef.current = null;
       latestPositionRef.current = null;
       setDraggingNoteId(null);
       
       try {
+        // Move dragged note to front of array (highest z-index)
+        if (shouldReorder) {
+          setNotes(newOrder);
+        }
+        
         // Update position in backend
         await notesApi.updateNote(noteId, { x: position.x, y: position.y });
+        
+        // Reorder in backend using the pre-calculated new order
+        if (shouldReorder) {
+          await notesApi.reorderNotes(newOrder.map(n => n.id));
+        }
       } catch (error) {
         console.error("Failed to update note position:", error);
       }

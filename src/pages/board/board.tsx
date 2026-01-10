@@ -25,6 +25,7 @@ import { usePan } from "@/hooks/usePan";
 import { useNoteDrag } from "@/hooks/useNoteDrag";
 import { useNoteManagement } from "@/hooks/useNoteManagement";
 import { useAuth } from "@/contexts/AuthContext";
+import { useConfirm } from "@/hooks/useConfirm";
 import {
   noteColors,
   textColors,
@@ -108,6 +109,7 @@ export function BoardPage() {
   // Auth context for admin check
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
+  const confirm = useConfirm();
 
   const {
     handleDragStart: handleNoteDragStart,
@@ -189,7 +191,8 @@ export function BoardPage() {
   // Handle note drag start
   const handleDragStart = (e: React.MouseEvent, noteId: number) => {
     const note = notes.find((n) => n.id === noteId);
-    if (note?.isLocked) return;
+    // Allow admin to drag locked notes
+    if (note?.isLocked && !isAdmin) return;
 
     clearHighlight(noteId);
     handleNoteDragStart(noteId, e);
@@ -198,7 +201,8 @@ export function BoardPage() {
   // Handle touch start (mobile)
   const handleTouchStart = (e: React.TouchEvent, noteId: number) => {
     const note = notes.find((n) => n.id === noteId);
-    if (note?.isLocked) return;
+    // Allow admin to drag locked notes
+    if (note?.isLocked && !isAdmin) return;
 
     // Check if touch is on action buttons area
     const target = e.target as HTMLElement;
@@ -483,7 +487,8 @@ export function BoardPage() {
                   "sticky-note absolute w-48 min-h-48 p-4 rounded-sm shadow-lg",
                   "hover:shadow-xl",
                   "group",
-                  !note.isLocked && "cursor-move",
+                  // Admin can move locked notes, regular users cannot
+                  (!note.isLocked || isAdmin) && "cursor-move",
                   // Dragging state - disable transition and boost shadow
                   draggingNoteId === note.id &&
                     "shadow-2xl scale-105 cursor-grabbing",
@@ -614,21 +619,39 @@ export function BoardPage() {
                       <Check className="w-3.5 h-3.5" />
                     </button>
                   )}
-                  {/* Delete button - only show if not locked */}
-                  {!note.isLocked && (
+                  {/* Delete button - show for unlocked notes OR admin */}
+                  {(!note.isLocked || isAdmin) && (
                     <button
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        handleDeleteNote(note.id);
+                        const confirmed = await confirm({
+                          title: "Xóa ghi chú",
+                          message: "Bạn có chắc muốn xóa ghi chú này?",
+                          confirmText: "Xóa",
+                          cancelText: "Hủy",
+                          type: "danger",
+                        });
+                        if (confirmed) {
+                          handleDeleteNote(note.id, isAdmin);
+                        }
                       }}
                       onTouchStart={(e) => {
                         e.stopPropagation();
                       }}
-                      onTouchEnd={(e) => {
+                      onTouchEnd={async (e) => {
                         e.stopPropagation();
                         e.preventDefault();
-                        handleDeleteNote(note.id);
+                        const confirmed = await confirm({
+                          title: "Xóa ghi chú",
+                          message: "Bạn có chắc muốn xóa ghi chú này?",
+                          confirmText: "Xóa",
+                          cancelText: "Hủy",
+                          type: "danger",
+                        });
+                        if (confirmed) {
+                          handleDeleteNote(note.id, isAdmin);
+                        }
                       }}
                       className={cn(
                         "p-1.5 rounded-full",
@@ -693,6 +716,22 @@ export function BoardPage() {
           onClose={closeOverlay}
           onSelect={handleSelectFromOverlay}
           onReorder={reorderNotes}
+          onDelete={async (noteId) => {
+            const confirmed = await confirm({
+              title: "Xóa ghi chú",
+              message: "Bạn có chắc muốn xóa ghi chú này?",
+              confirmText: "Xóa",
+              cancelText: "Hủy",
+              type: "danger",
+            });
+            if (confirmed) {
+              handleDeleteNote(noteId, true);
+              // If only one note left, close overlay
+              if (overlappingNotes.length <= 2) {
+                closeOverlay();
+              }
+            }
+          }}
         />
       )}
 

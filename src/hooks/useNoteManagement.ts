@@ -84,9 +84,9 @@ export function useNoteManagement({ zoomRef, panOffsetRef, boardRef }: UseNoteMa
   }, []);
 
   // Delete note
-  const handleDeleteNote = useCallback(async (id: number) => {
+  const handleDeleteNote = useCallback(async (id: number, forceDelete: boolean = false) => {
     const note = notes.find(n => n.id === id);
-    if (note?.isLocked) return;
+    if (note?.isLocked && !forceDelete) return;
     
     try {
       await notesApi.deleteNote(id);

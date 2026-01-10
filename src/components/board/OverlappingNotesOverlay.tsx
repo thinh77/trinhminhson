@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { X, Check, GripVertical, Save, Loader2 } from "lucide-react";
+import { X, Check, GripVertical, Save, Loader2, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { renderTextWithLinks } from "@/lib/renderTextWithLinks";
 import type { Note } from "@/types/note";
@@ -10,6 +10,7 @@ interface OverlappingNotesOverlayProps {
   onClose: () => void;
   onSelect: (note: Note) => void;
   onReorder: (noteIds: number[]) => Promise<void>;
+  onDelete?: (noteId: number) => Promise<void>;
 }
 
 export function OverlappingNotesOverlay({
@@ -18,6 +19,7 @@ export function OverlappingNotesOverlay({
   onClose,
   onSelect,
   onReorder,
+  onDelete,
 }: OverlappingNotesOverlayProps) {
   const [orderedNotes, setOrderedNotes] = useState<Note[]>([...notes]);
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
@@ -340,6 +342,29 @@ export function OverlappingNotesOverlay({
                     <Check className="w-3 h-3" />
                     Đã khóa
                   </span>
+                )}
+
+                {/* Delete button for admin */}
+                {isAdmin && onDelete && (
+                  <button
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      await onDelete(note.id);
+                      setOrderedNotes((prev) =>
+                        prev.filter((n) => n.id !== note.id)
+                      );
+                    }}
+                    className={cn(
+                      "absolute bottom-2 left-2 p-2 rounded-full",
+                      "bg-red-500 text-white shadow-lg",
+                      "hover:bg-red-600 transition-colors",
+                      "opacity-0 group-hover:opacity-100",
+                      "cursor-pointer"
+                    )}
+                    title="Xóa ghi chú"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
                 )}
 
                 {/* Hover overlay - only for non-admin */}
