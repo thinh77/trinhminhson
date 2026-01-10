@@ -293,9 +293,6 @@ export function JapaneseFlashcardUpload() {
               ))}
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-3 italic">
-            * Dòng đầu tiên được coi là tiêu đề và sẽ bị bỏ qua
-          </p>
           {/* Form Fields */}
           <div className="space-y-4">
             <div>
