@@ -487,11 +487,8 @@ export function BoardPage() {
                   "sticky-note absolute w-48 min-h-48 p-4 rounded-sm shadow-lg",
                   "hover:shadow-xl",
                   "group",
-                  // Admin can move locked notes, regular users cannot
-                  (!note.isLocked || isAdmin) && "cursor-move",
                   // Dragging state - disable transition and boost shadow
-                  draggingNoteId === note.id &&
-                    "shadow-2xl scale-105 cursor-grabbing",
+                  draggingNoteId === note.id && "shadow-2xl scale-105",
                   // Only apply transition when NOT dragging this note
                   draggingNoteId !== note.id && "transition-all duration-300",
                   // Highlight effect for newly created note
@@ -505,7 +502,6 @@ export function BoardPage() {
                     draggingNoteId === note.id ? 0 : note.rotation
                   }deg)${isHighlighted ? " scale(1.05)" : ""}`,
                   animationDelay: `${index * 50}ms`,
-                  touchAction: "none",
                   willChange: draggingNoteId === note.id ? "left, top" : "auto",
                   // z-index based on creation time - newer notes (start of array from API) appear on top
                   zIndex:
@@ -519,15 +515,21 @@ export function BoardPage() {
                     ? "0 0 0 3px #fbbf24, 0 0 20px 5px rgba(251, 191, 36, 0.5), 0 25px 50px -12px rgba(0, 0, 0, 0.25)"
                     : undefined,
                 }}
-                onMouseDown={(e) => handleDragStart(e, note.id)}
-                onTouchStart={(e) => handleTouchStart(e, note.id)}
               >
-                {/* Tape effect */}
+                {/* Tape effect - DRAG HANDLE */}
                 <div
-                  className="absolute -top-3 left-1/2 -translate-x-1/2 w-12 h-6 bg-amber-200/60 rounded-sm"
+                  className={cn(
+                    "absolute -top-3 left-1/2 -translate-x-1/2 w-16 h-8 bg-amber-200/60 rounded-sm",
+                    // Admin can move locked notes, regular users cannot
+                    (!note.isLocked || isAdmin) && "cursor-move",
+                    draggingNoteId === note.id && "cursor-grabbing"
+                  )}
                   style={{
                     transform: `translateX(-50%) rotate(${-note.rotation}deg)`,
+                    touchAction: "none",
                   }}
+                  onMouseDown={(e) => handleDragStart(e, note.id)}
+                  onTouchStart={(e) => handleTouchStart(e, note.id)}
                 />
 
                 {/* Action buttons */}
