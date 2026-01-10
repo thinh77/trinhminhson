@@ -16,13 +16,18 @@ import {
   Calendar,
   MapPin,
   Loader2,
+  Filter,
+  ChevronDown,
+  FolderOpen,
+  Folder,
+  Tag,
 } from "lucide-react";
 import {
   getPhotos,
-  getCategories,
   getPhotoUrl,
   type Photo as ApiPhoto,
 } from "@/services/photos.service";
+import { getAllCategories, type Category } from "@/services/categories.service";
 
 // Photo type for display
 interface Photo {
@@ -34,6 +39,7 @@ interface Photo {
   date?: string;
   location?: string;
   category: string;
+  subcategories: string[]; // subcategory names
   aspectRatio: "landscape" | "portrait" | "square";
 }
 
@@ -50,6 +56,7 @@ function mapApiPhotoToDisplay(photo: ApiPhoto): Photo {
       : undefined,
     location: photo.location,
     category: photo.category,
+    subcategories: photo.subcategories?.map((sub) => sub.name) || [],
     aspectRatio: photo.aspect_ratio || "landscape",
   };
 }
@@ -58,22 +65,29 @@ export function PhotosPage() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [photos, setPhotos] = useState<Photo[]>([]);
-  const [categories, setCategories] = useState<string[]>(["All"]);
+  const [categoriesData, setCategoriesData] = useState<Category[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [activeCategory, setActiveCategory] = useState("All");
+  const [activeSubcategory, setActiveSubcategory] = useState<string | null>(
+    null
+  );
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [expandedCategories, setExpandedCategories] = useState<Set<number>>(
+    new Set()
+  );
 
   // Load photos and categories on mount
   useEffect(() => {
     async function loadData() {
       try {
         setIsLoading(true);
-        const [photosData, categoriesData] = await Promise.all([
+        const [photosData, categories] = await Promise.all([
           getPhotos(),
-          getCategories(),
+          getAllCategories(false),
         ]);
         setPhotos(photosData.map(mapApiPhotoToDisplay));
-        setCategories(["All", ...categoriesData]);
+        setCategoriesData(categories);
       } catch (error) {
         console.error("Failed to load photos:", error);
       } finally {
@@ -87,6 +101,12 @@ export function PhotosPage() {
   const filteredPhotos =
     activeCategory === "All"
       ? photos
+      : activeSubcategory
+      ? photos.filter(
+          (p) =>
+            p.category === activeCategory &&
+            p.subcategories.includes(activeSubcategory)
+        )
       : photos.filter((p) => p.category === activeCategory);
 
   const currentIndex = selectedPhoto
@@ -111,6 +131,37 @@ export function PhotosPage() {
     if (e.key === "Escape") setSelectedPhoto(null);
   };
 
+  const toggleCategoryExpand = (categoryId: number) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(categoryId)) {
+        next.delete(categoryId);
+      } else {
+        next.add(categoryId);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectCategory = (categoryName: string) => {
+    setActiveCategory(categoryName);
+    setActiveSubcategory(null);
+  };
+
+  const handleSelectSubcategory = (
+    categoryName: string,
+    subcategoryName: string
+  ) => {
+    setActiveCategory(categoryName);
+    setActiveSubcategory(subcategoryName);
+  };
+
+  const getActiveFilterLabel = () => {
+    if (activeCategory === "All") return "All Photos";
+    if (activeSubcategory) return `${activeCategory} / ${activeSubcategory}`;
+    return activeCategory;
+  };
+
   const handleImageLoad = (id: string) => {
     setLoadedImages((prev) => new Set(prev).add(id));
   };
@@ -122,6 +173,175 @@ export function PhotosPage() {
 
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-accent/5 pointer-events-none" />
+
+      {/* Fixed Filter Button */}
+      <button
+        onClick={() => setIsFilterOpen(!isFilterOpen)}
+        className={cn(
+          "fixed right-4 top-24 z-40",
+          "flex items-center gap-2 px-4 py-2.5 rounded-xl",
+          "bg-card/95 backdrop-blur-sm border border-border/50",
+          "shadow-lg shadow-black/10",
+          "text-sm font-medium",
+          "transition-all duration-200",
+          "cursor-pointer",
+          "hover:bg-card hover:shadow-xl",
+          isFilterOpen && "bg-accent text-accent-foreground"
+        )}
+      >
+        <Filter className="w-4 h-4" />
+        <span className="hidden sm:inline">{getActiveFilterLabel()}</span>
+        <ChevronDown
+          className={cn(
+            "w-4 h-4 transition-transform duration-200",
+            isFilterOpen && "rotate-180"
+          )}
+        />
+      </button>
+
+      {/* Fixed Filter Panel */}
+      <div
+        className={cn(
+          "fixed right-4 top-40 z-40",
+          "w-64 max-h-[calc(100vh-12rem)]",
+          "bg-card/95 backdrop-blur-sm border border-border/50",
+          "rounded-xl shadow-xl shadow-black/10",
+          "overflow-hidden",
+          "transition-all duration-300 ease-out",
+          isFilterOpen
+            ? "opacity-100 translate-x-0"
+            : "opacity-0 -translate-x-4 pointer-events-none"
+        )}
+      >
+        <div className="p-3 border-b border-border/50">
+          <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+            <Filter className="w-4 h-4 text-accent" />
+            Filter by Category
+          </h3>
+        </div>
+        <div className="overflow-y-auto max-h-[calc(100vh-16rem)] p-2">
+          {/* All Photos */}
+          <button
+            onClick={() => {
+              handleSelectCategory("All");
+              setIsFilterOpen(false);
+            }}
+            className={cn(
+              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+              "transition-all duration-150",
+              "cursor-pointer",
+              activeCategory === "All" && !activeSubcategory
+                ? "bg-accent text-accent-foreground"
+                : "text-foreground hover:bg-secondary/50"
+            )}
+          >
+            <Camera className="w-4 h-4" />
+            <span className="font-medium">All Photos</span>
+            <span className="ml-auto text-xs opacity-60">{photos.length}</span>
+          </button>
+
+          {/* Category Tree */}
+          <div className="mt-2 space-y-1">
+            {categoriesData.map((category) => {
+              const isExpanded = expandedCategories.has(category.id);
+              const hasSubcategories =
+                category.subcategories && category.subcategories.length > 0;
+              const categoryPhotoCount = photos.filter(
+                (p) => p.category === category.name
+              ).length;
+              const isActive =
+                activeCategory === category.name && !activeSubcategory;
+
+              return (
+                <div key={category.id}>
+                  {/* Category Item */}
+                  <div className="flex items-center">
+                    {hasSubcategories && (
+                      <button
+                        onClick={() => toggleCategoryExpand(category.id)}
+                        className="p-1 rounded hover:bg-secondary/50 cursor-pointer"
+                      >
+                        <ChevronDown
+                          className={cn(
+                            "w-3 h-3 text-muted-foreground transition-transform duration-200",
+                            !isExpanded && "-rotate-90"
+                          )}
+                        />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        handleSelectCategory(category.name);
+                        setIsFilterOpen(false);
+                      }}
+                      className={cn(
+                        "flex-1 flex items-center gap-2 px-3 py-2 rounded-lg text-sm",
+                        "transition-all duration-150",
+                        "cursor-pointer",
+                        !hasSubcategories && "ml-5",
+                        isActive
+                          ? "bg-accent text-accent-foreground"
+                          : "text-foreground hover:bg-secondary/50"
+                      )}
+                    >
+                      {isExpanded ? (
+                        <FolderOpen className="w-4 h-4 text-accent" />
+                      ) : (
+                        <Folder className="w-4 h-4" />
+                      )}
+                      <span className="font-medium truncate">
+                        {category.name}
+                      </span>
+                      <span className="ml-auto text-xs opacity-60">
+                        {categoryPhotoCount}
+                      </span>
+                    </button>
+                  </div>
+
+                  {/* Subcategories */}
+                  {hasSubcategories && isExpanded && (
+                    <div className="ml-6 mt-1 space-y-0.5 border-l-2 border-border/30 pl-2">
+                      {category.subcategories.map((sub) => {
+                        const isSubActive =
+                          activeCategory === category.name &&
+                          activeSubcategory === sub.name;
+                        return (
+                          <button
+                            key={sub.id}
+                            onClick={() => {
+                              handleSelectSubcategory(category.name, sub.name);
+                              setIsFilterOpen(false);
+                            }}
+                            className={cn(
+                              "w-full flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm",
+                              "transition-all duration-150",
+                              "cursor-pointer",
+                              isSubActive
+                                ? "bg-accent/80 text-accent-foreground"
+                                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+                            )}
+                          >
+                            <Tag className="w-3 h-3" />
+                            <span className="truncate">{sub.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Backdrop when filter is open */}
+      {isFilterOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/20 backdrop-blur-sm sm:hidden"
+          onClick={() => setIsFilterOpen(false)}
+        />
+      )}
 
       {/* Main content */}
       <main className="relative pt-28 pb-16 px-4 sm:px-6 lg:px-8">
@@ -150,26 +370,26 @@ export function PhotosPage() {
               </div>
             </div>
 
-            {/* Category filters */}
-            <div className="flex flex-wrap gap-2 mt-6">
-              {categories.map((category) => (
+            {/* Active filter indicator */}
+            {activeCategory !== "All" && (
+              <div className="flex items-center gap-2 mt-4">
+                <span className="text-sm text-muted-foreground">
+                  Filtering by:
+                </span>
+                <span className="px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-medium">
+                  {getActiveFilterLabel()}
+                </span>
                 <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={cn(
-                    "px-4 py-2 rounded-full text-sm font-medium",
-                    "transition-all duration-200 ease-out",
-                    "cursor-pointer",
-                    "focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-                    activeCategory === category
-                      ? "bg-accent text-accent-foreground shadow-md"
-                      : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"
-                  )}
+                  onClick={() => {
+                    setActiveCategory("All");
+                    setActiveSubcategory(null);
+                  }}
+                  className="p-1 rounded-full hover:bg-secondary/50 cursor-pointer"
                 >
-                  {category}
+                  <X className="w-4 h-4 text-muted-foreground" />
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
           </div>
 
           {/* Loading state */}

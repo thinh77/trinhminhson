@@ -17,6 +17,12 @@ function getAuthHeaders(): HeadersInit {
 }
 
 // Types
+export interface PhotoSubcategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export interface Photo {
   id: number;
   title: string;
@@ -25,6 +31,7 @@ export interface Photo {
   alt: string;
   location?: string;
   category: string;
+  subcategories?: PhotoSubcategory[];
   date_taken?: string;
   aspect_ratio: "landscape" | "portrait" | "square";
   width?: number;
@@ -43,6 +50,7 @@ export interface UploadPhotoData {
   alt: string;
   location?: string;
   category: string;
+  subcategoryIds?: number[];
   dateTaken?: string;
   isPublic?: boolean;
 }
@@ -52,6 +60,7 @@ export interface UpdatePhotoData {
   alt?: string;
   location?: string;
   category?: string;
+  subcategoryIds?: number[];
   dateTaken?: string;
   isPublic?: boolean;
   displayOrder?: number;
@@ -118,6 +127,9 @@ export async function uploadPhoto(
   formData.append("alt", data.alt);
   if (data.location) formData.append("location", data.location);
   formData.append("category", data.category);
+  if (data.subcategoryIds && data.subcategoryIds.length > 0) {
+    formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
+  }
   if (data.dateTaken) formData.append("dateTaken", data.dateTaken);
   formData.append("isPublic", String(data.isPublic !== false));
 

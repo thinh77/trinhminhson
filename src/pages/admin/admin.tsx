@@ -48,6 +48,7 @@ import {
   type UpdatePhotoData,
 } from "@/services/photos.service";
 import { CategoryManagement } from "@/components/admin/CategoryManagement";
+import { getAllCategories, type Category } from "@/services/categories.service";
 
 // Use BlogFormData directly for the admin form (already includes: title, excerpt, content, image, tags, readTime)
 type AdminBlogFormData = BlogFormData;
@@ -57,7 +58,8 @@ interface PhotoFormData {
   file: File | null;
   alt: string;
   location: string;
-  category: string;
+  categoryId: number | null;
+  subcategoryIds: number[];
   date: string;
 }
 
@@ -139,7 +141,8 @@ export function AdminPage() {
     file: null,
     alt: "",
     location: "",
-    category: "",
+    categoryId: null,
+    subcategoryIds: [],
     date: new Date().toISOString().split("T")[0],
   });
 
@@ -152,6 +155,9 @@ export function AdminPage() {
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
   const [photoSearchQuery, setPhotoSearchQuery] = useState("");
+
+  // Categories state for photo upload
+  const [categoriesData, setCategoriesData] = useState<Category[]>([]);
 
   // Form errors
   const [blogErrors, setBlogErrors] = useState<Partial<AdminBlogFormData>>({});
@@ -168,8 +174,19 @@ export function AdminPage() {
   useEffect(() => {
     if (activeTab === "photos") {
       loadPhotos();
+      loadCategoriesData();
     }
   }, [activeTab]);
+
+  // Load categories data for dropdowns
+  const loadCategoriesData = async () => {
+    try {
+      const data = await getAllCategories(false);
+      setCategoriesData(data);
+    } catch (error) {
+      console.error("Failed to load categories:", error);
+    }
+  };
 
   // Load photos function
   const loadPhotos = async () => {
@@ -280,8 +297,8 @@ export function AdminPage() {
     if (!photoForm.alt.trim()) {
       errors.alt = "Alt text is required";
     }
-    if (!photoForm.category.trim()) {
-      errors.category = "Category is required";
+    if (!photoForm.categoryId) {
+      errors.categoryId = "Category is required";
     }
 
     setPhotoErrors(errors);
@@ -379,6 +396,15 @@ export function AdminPage() {
       return;
     }
 
+    // Get category name from selected category
+    const selectedCategory = categoriesData.find(
+      (c) => c.id === photoForm.categoryId
+    );
+    if (!selectedCategory) {
+      setToast({ message: "Please select a valid category", type: "error" });
+      return;
+    }
+
     setIsSubmitting(true);
     try {
       // Upload photo to server
@@ -386,7 +412,11 @@ export function AdminPage() {
         title: photoForm.title,
         alt: photoForm.alt,
         location: photoForm.location || undefined,
-        category: photoForm.category,
+        category: selectedCategory.name,
+        subcategoryIds:
+          photoForm.subcategoryIds.length > 0
+            ? photoForm.subcategoryIds
+            : undefined,
         dateTaken: photoForm.date,
         isPublic: true,
       });
@@ -397,7 +427,8 @@ export function AdminPage() {
         file: null,
         alt: "",
         location: "",
-        category: "",
+        categoryId: null,
+        subcategoryIds: [],
         date: new Date().toISOString().split("T")[0],
       });
       setPhotoPreview(null);
@@ -1164,8 +1195,8 @@ export function AdminPage() {
                         )}
                       </div>
 
-                      {/* Category and Location */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {/* Category and Subcategory */}
+                      <div className="space-y-4">
                         <div className="space-y-2">
                           <label
                             htmlFor="photo-category"
@@ -1174,53 +1205,117 @@ export function AdminPage() {
                             <Tag className="w-4 h-4 text-muted-foreground" />
                             Category <span className="text-red-500">*</span>
                           </label>
-                          <Input
+                          <select
                             id="photo-category"
-                            type="text"
-                            placeholder="Nature, Urban, Portrait..."
-                            value={photoForm.category}
-                            onChange={(e) =>
+                            value={photoForm.categoryId || ""}
+                            onChange={(e) => {
+                              const categoryId = e.target.value
+                                ? Number(e.target.value)
+                                : null;
                               setPhotoForm({
                                 ...photoForm,
-                                category: e.target.value,
-                              })
-                            }
+                                categoryId,
+                                subcategoryIds: [], // Reset subcategories when category changes
+                              });
+                            }}
                             className={cn(
-                              "bg-background/50",
-                              photoErrors.category &&
-                                "border-red-500 focus-visible:ring-red-500"
+                              "w-full h-10 px-3 rounded-md border bg-background/50",
+                              "text-sm text-foreground",
+                              "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
+                              photoErrors.categoryId
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-input"
                             )}
-                          />
-                          {photoErrors.category && (
+                          >
+                            <option value="">Select a category...</option>
+                            {categoriesData.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                          {photoErrors.categoryId && (
                             <p className="text-red-500 text-xs flex items-center gap-1">
                               <AlertCircle className="w-3 h-3" />
-                              {photoErrors.category}
+                              {photoErrors.categoryId}
                             </p>
                           )}
                         </div>
 
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="photo-location"
-                            className="text-sm font-medium text-foreground flex items-center gap-2"
-                          >
-                            <MapPin className="w-4 h-4 text-muted-foreground" />
-                            Location
-                          </label>
-                          <Input
-                            id="photo-location"
-                            type="text"
-                            placeholder="Swiss Alps"
-                            value={photoForm.location}
-                            onChange={(e) =>
-                              setPhotoForm({
-                                ...photoForm,
-                                location: e.target.value,
-                              })
-                            }
-                            className="bg-background/50"
-                          />
-                        </div>
+                        {/* Subcategories - shown when category is selected */}
+                        {photoForm.categoryId && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <Tag className="w-4 h-4 text-muted-foreground" />
+                              Subcategories
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {categoriesData
+                                .find((c) => c.id === photoForm.categoryId)
+                                ?.subcategories.map((sub) => (
+                                  <button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => {
+                                      const isSelected =
+                                        photoForm.subcategoryIds.includes(
+                                          sub.id
+                                        );
+                                      setPhotoForm({
+                                        ...photoForm,
+                                        subcategoryIds: isSelected
+                                          ? photoForm.subcategoryIds.filter(
+                                              (id) => id !== sub.id
+                                            )
+                                          : [
+                                              ...photoForm.subcategoryIds,
+                                              sub.id,
+                                            ],
+                                      });
+                                    }}
+                                    className={cn(
+                                      "px-3 py-1.5 rounded-full text-sm font-medium",
+                                      "transition-all duration-200",
+                                      "cursor-pointer",
+                                      "border",
+                                      photoForm.subcategoryIds.includes(sub.id)
+                                        ? "bg-accent text-accent-foreground border-accent"
+                                        : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+                                    )}
+                                  >
+                                    {sub.name}
+                                  </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              Click to select/deselect subcategories (optional)
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Location */}
+                      <div className="space-y-2">
+                        <label
+                          htmlFor="photo-location"
+                          className="text-sm font-medium text-foreground flex items-center gap-2"
+                        >
+                          <MapPin className="w-4 h-4 text-muted-foreground" />
+                          Location
+                        </label>
+                        <Input
+                          id="photo-location"
+                          type="text"
+                          placeholder="Swiss Alps"
+                          value={photoForm.location}
+                          onChange={(e) =>
+                            setPhotoForm({
+                              ...photoForm,
+                              location: e.target.value,
+                            })
+                          }
+                          className="bg-background/50"
+                        />
                       </div>
 
                       {/* Date */}
@@ -1254,7 +1349,8 @@ export function AdminPage() {
                               file: null,
                               alt: "",
                               location: "",
-                              category: "",
+                              categoryId: null,
+                              subcategoryIds: [],
                               date: new Date().toISOString().split("T")[0],
                             });
                             setPhotoPreview(null);
