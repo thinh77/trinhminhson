@@ -75,7 +75,7 @@ export function getPhotoUrl(filename: string, size: 'thumb' | 'medium' | 'large'
   if (size === 'original') {
     return `${STATIC_BASE_URL}/uploads/photos/${filename}`;
   }
-  
+
   // Get base name without extension and add size suffix
   const baseName = filename.replace(/\.[^/.]+$/, '');
   return `${STATIC_BASE_URL}/uploads/photos/${baseName}_${size}.jpg`;
@@ -162,4 +162,61 @@ export async function updatePhoto(
  */
 export async function deletePhoto(id: number): Promise<{ message: string }> {
   return api.delete<{ message: string }>(`/photos/${id}`);
+}
+
+/**
+ * Bulk upload data for album upload
+ */
+export interface BulkUploadData {
+  category: string;
+  subcategoryIds?: number[];
+  location?: string;
+  dateTaken?: string;
+  isPublic?: boolean;
+}
+
+/**
+ * Bulk upload response
+ */
+export interface BulkUploadResponse {
+  message: string;
+  uploaded: Photo[];
+  errors: Array<{ filename: string; error: string }>;
+  total: number;
+}
+
+/**
+ * Upload multiple photos with shared metadata (Album upload)
+ */
+export async function uploadMultiplePhotos(
+  files: File[],
+  data: BulkUploadData
+): Promise<BulkUploadResponse> {
+  const formData = new FormData();
+
+  // Append each file
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  formData.append("category", data.category);
+  if (data.subcategoryIds && data.subcategoryIds.length > 0) {
+    formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
+  }
+  if (data.location) formData.append("location", data.location);
+  if (data.dateTaken) formData.append("dateTaken", data.dateTaken);
+  formData.append("isPublic", String(data.isPublic !== false));
+
+  const response = await fetch(`${API_BASE_URL}/photos/bulk`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to upload photos");
+  }
+
+  return response.json();
 }

@@ -40,6 +40,7 @@ import { BlogFormData } from "@/types/blog";
 import { postsApi } from "@/services/posts.service";
 import {
   uploadPhoto,
+  uploadMultiplePhotos,
   getPhotos,
   updatePhoto,
   deletePhoto,
@@ -61,6 +62,20 @@ interface PhotoFormData {
   categoryId: number | null;
   subcategoryIds: number[];
   date: string;
+}
+
+interface AlbumFormData {
+  categoryId: number | null;
+  subcategoryIds: number[];
+  location: string;
+  date: string;
+}
+
+interface AlbumUploadProgress {
+  uploading: boolean;
+  uploaded: number;
+  total: number;
+  errors: Array<{ filename: string; error: string }>;
 }
 
 // Tab type
@@ -153,8 +168,43 @@ export function AdminPage() {
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
   const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
+  const [editPhotoForm, setEditPhotoForm] = useState<{
+    title: string;
+    alt: string;
+    location: string;
+    categoryId: number | null;
+    subcategoryIds: number[];
+    dateTaken: string;
+  }>({
+    title: "",
+    alt: "",
+    location: "",
+    categoryId: null,
+    subcategoryIds: [],
+    dateTaken: "",
+  });
   const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
   const [photoSearchQuery, setPhotoSearchQuery] = useState("");
+
+  // Album upload state
+  const [albumFiles, setAlbumFiles] = useState<File[]>([]);
+  const [albumPreviews, setAlbumPreviews] = useState<string[]>([]);
+  const [albumForm, setAlbumForm] = useState<AlbumFormData>({
+    categoryId: null,
+    subcategoryIds: [],
+    location: "",
+    date: new Date().toISOString().split("T")[0],
+  });
+  const [albumUploadProgress, setAlbumUploadProgress] =
+    useState<AlbumUploadProgress>({
+      uploading: false,
+      uploaded: 0,
+      total: 0,
+      errors: [],
+    });
+  const [albumErrors, setAlbumErrors] = useState<
+    Partial<Record<string, string>>
+  >({});
 
   // Categories state for photo upload
   const [categoriesData, setCategoriesData] = useState<Category[]>([]);
@@ -228,13 +278,43 @@ export function AdminPage() {
 
   // Handle edit photo
   const handleEditPhoto = (photo: Photo) => {
+    // Find category ID from category name
+    const category = categoriesData.find((c) => c.name === photo.category);
+    const categoryId = category?.id || null;
+
+    // Get subcategory IDs from photo's subcategories
+    const subcategoryIds = photo.subcategories?.map((sub) => sub.id) || [];
+
+    setEditPhotoForm({
+      title: photo.title || "",
+      alt: photo.alt || "",
+      location: photo.location || "",
+      categoryId,
+      subcategoryIds,
+      dateTaken: photo.date_taken ? photo.date_taken.split("T")[0] : "",
+    });
     setEditingPhoto(photo);
   };
 
   // Handle save edited photo
-  const handleSavePhoto = async (photoId: number, updates: UpdatePhotoData) => {
+  const handleSavePhoto = async (photoId: number) => {
     try {
-      const updatedPhoto = await updatePhoto(photoId, updates);
+      // Find category name from categoryId
+      const category = categoriesData.find(
+        (c) => c.id === editPhotoForm.categoryId
+      );
+
+      const updatedPhoto = await updatePhoto(photoId, {
+        title: editPhotoForm.title,
+        alt: editPhotoForm.alt,
+        location: editPhotoForm.location || undefined,
+        category: category?.name,
+        subcategoryIds:
+          editPhotoForm.subcategoryIds.length > 0
+            ? editPhotoForm.subcategoryIds
+            : undefined,
+        dateTaken: editPhotoForm.dateTaken || undefined,
+      });
       setPhotos((prev) =>
         prev.map((p) => (p.id === photoId ? updatedPhoto : p))
       );
@@ -449,6 +529,147 @@ export function AdminPage() {
       });
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle album files change
+  const handleAlbumFilesChange = (newFiles: FileList | null) => {
+    if (!newFiles) return;
+
+    const filesArray = Array.from(newFiles);
+    // Filter only image files
+    const imageFiles = filesArray.filter((file) =>
+      file.type.startsWith("image/")
+    );
+
+    // Add to existing files
+    const updatedFiles = [...albumFiles, ...imageFiles];
+    setAlbumFiles(updatedFiles);
+
+    // Create preview URLs for new files
+    const newPreviews = imageFiles.map((file) => URL.createObjectURL(file));
+    setAlbumPreviews((prev) => [...prev, ...newPreviews]);
+  };
+
+  // Remove a file from album
+  const removeAlbumFile = (index: number) => {
+    setAlbumFiles((prev) => prev.filter((_, i) => i !== index));
+    // Revoke the object URL to free memory
+    URL.revokeObjectURL(albumPreviews[index]);
+    setAlbumPreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Clear all album files
+  const clearAlbumFiles = () => {
+    albumPreviews.forEach((url) => URL.revokeObjectURL(url));
+    setAlbumFiles([]);
+    setAlbumPreviews([]);
+    setAlbumForm({
+      categoryId: null,
+      subcategoryIds: [],
+      location: "",
+      date: new Date().toISOString().split("T")[0],
+    });
+    setAlbumErrors({});
+    setAlbumUploadProgress({
+      uploading: false,
+      uploaded: 0,
+      total: 0,
+      errors: [],
+    });
+  };
+
+  // Validate album form
+  const validateAlbumForm = (): boolean => {
+    const errors: Partial<Record<string, string>> = {};
+
+    if (albumFiles.length === 0) {
+      errors.files = "Please select at least one image";
+    }
+    if (!albumForm.categoryId) {
+      errors.categoryId = "Category is required";
+    }
+
+    setAlbumErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle album upload
+  const handleAlbumSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!validateAlbumForm()) {
+      setToast({
+        message: "Please fill in all required fields",
+        type: "error",
+      });
+      return;
+    }
+
+    // Get category name from selected category
+    const selectedCategory = categoriesData.find(
+      (c) => c.id === albumForm.categoryId
+    );
+    if (!selectedCategory) {
+      setToast({ message: "Please select a valid category", type: "error" });
+      return;
+    }
+
+    setAlbumUploadProgress({
+      uploading: true,
+      uploaded: 0,
+      total: albumFiles.length,
+      errors: [],
+    });
+
+    try {
+      const result = await uploadMultiplePhotos(albumFiles, {
+        category: selectedCategory.name,
+        subcategoryIds:
+          albumForm.subcategoryIds.length > 0
+            ? albumForm.subcategoryIds
+            : undefined,
+        location: albumForm.location || undefined,
+        dateTaken: albumForm.date,
+        isPublic: true,
+      });
+
+      setAlbumUploadProgress({
+        uploading: false,
+        uploaded: result.uploaded.length,
+        total: result.total,
+        errors: result.errors,
+      });
+
+      // Clear form on success
+      if (result.errors.length === 0) {
+        clearAlbumFiles();
+        setToast({
+          message: `Successfully uploaded ${result.uploaded.length} photos!`,
+          type: "success",
+        });
+      } else {
+        setToast({
+          message: `Uploaded ${result.uploaded.length}/${result.total} photos. ${result.errors.length} failed.`,
+          type: result.uploaded.length > 0 ? "success" : "error",
+        });
+      }
+
+      // Reload photos list
+      await loadPhotos();
+    } catch (error) {
+      console.error("Failed to upload album:", error);
+      setAlbumUploadProgress((prev) => ({
+        ...prev,
+        uploading: false,
+      }));
+      setToast({
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to upload album. Please try again.",
+        type: "error",
+      });
     }
   };
 
@@ -1030,14 +1251,363 @@ export function AdminPage() {
             {/* Photo Form */}
             {activeTab === "photos" && (
               <>
+                {/* Album Upload Section */}
+                <Card className="bg-card/50 backdrop-blur-sm border-border/50 mb-6">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <ImageIcon className="w-5 h-5 text-accent" />
+                      Album Upload
+                    </CardTitle>
+                    <CardDescription>
+                      Upload multiple photos with the same category and
+                      subcategory
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <form onSubmit={handleAlbumSubmit} className="space-y-6">
+                      {/* Multi-file Drop Zone */}
+                      <div className="space-y-2">
+                        <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                          <Upload className="w-4 h-4 text-muted-foreground" />
+                          Select Images <span className="text-red-500">*</span>
+                        </label>
+                        <div
+                          className={cn(
+                            "relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer",
+                            "hover:border-accent/50 hover:bg-accent/5",
+                            albumErrors.files
+                              ? "border-red-500"
+                              : albumFiles.length > 0
+                              ? "border-accent bg-accent/5"
+                              : "border-border"
+                          )}
+                          onClick={() =>
+                            document.getElementById("album-files")?.click()
+                          }
+                          onDragOver={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.add(
+                              "border-accent",
+                              "bg-accent/10"
+                            );
+                          }}
+                          onDragLeave={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove(
+                              "border-accent",
+                              "bg-accent/10"
+                            );
+                          }}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove(
+                              "border-accent",
+                              "bg-accent/10"
+                            );
+                            handleAlbumFilesChange(e.dataTransfer.files);
+                          }}
+                        >
+                          <input
+                            id="album-files"
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            onChange={(e) =>
+                              handleAlbumFilesChange(e.target.files)
+                            }
+                          />
+                          <div className="space-y-2">
+                            <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
+                            <p className="text-sm font-medium text-foreground">
+                              Click to upload or drag and drop multiple images
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              PNG, JPG, GIF up to 10MB each • Max 50 files
+                            </p>
+                            {albumFiles.length > 0 && (
+                              <p className="text-sm text-accent font-medium">
+                                {albumFiles.length} file(s) selected
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        {albumErrors.files && (
+                          <p className="text-red-500 text-xs flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            {albumErrors.files}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Preview Grid */}
+                      {albumFiles.length > 0 && (
+                        <div className="space-y-2">
+                          <label className="text-sm font-medium text-foreground">
+                            Selected Images
+                          </label>
+                          <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
+                            {albumPreviews.map((preview, index) => (
+                              <div
+                                key={index}
+                                className="relative aspect-square rounded-lg overflow-hidden bg-secondary/30 group"
+                              >
+                                <img
+                                  src={preview}
+                                  alt={`Preview ${index + 1}`}
+                                  className="w-full h-full object-cover"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeAlbumFile(index);
+                                  }}
+                                  className="absolute top-1 right-1 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                                <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] px-1 py-0.5 truncate">
+                                  {albumFiles[index]?.name}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Category Selection */}
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="album-category"
+                            className="text-sm font-medium text-foreground flex items-center gap-2"
+                          >
+                            <Tag className="w-4 h-4 text-muted-foreground" />
+                            Category <span className="text-red-500">*</span>
+                          </label>
+                          <select
+                            id="album-category"
+                            value={albumForm.categoryId || ""}
+                            onChange={(e) => {
+                              const categoryId = e.target.value
+                                ? Number(e.target.value)
+                                : null;
+                              setAlbumForm({
+                                ...albumForm,
+                                categoryId,
+                                subcategoryIds: [],
+                              });
+                            }}
+                            className={cn(
+                              "w-full h-10 px-3 rounded-md border bg-background/50",
+                              "text-sm text-foreground",
+                              "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
+                              albumErrors.categoryId
+                                ? "border-red-500 focus:ring-red-500"
+                                : "border-input"
+                            )}
+                          >
+                            <option value="">Select a category...</option>
+                            {categoriesData.map((category) => (
+                              <option key={category.id} value={category.id}>
+                                {category.name}
+                              </option>
+                            ))}
+                          </select>
+                          {albumErrors.categoryId && (
+                            <p className="text-red-500 text-xs flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" />
+                              {albumErrors.categoryId}
+                            </p>
+                          )}
+                        </div>
+
+                        {/* Subcategories */}
+                        {albumForm.categoryId && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-foreground flex items-center gap-2">
+                              <Tag className="w-4 h-4 text-muted-foreground" />
+                              Subcategories
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {categoriesData
+                                .find((c) => c.id === albumForm.categoryId)
+                                ?.subcategories.map((sub) => (
+                                  <button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => {
+                                      const isSelected =
+                                        albumForm.subcategoryIds.includes(
+                                          sub.id
+                                        );
+                                      setAlbumForm({
+                                        ...albumForm,
+                                        subcategoryIds: isSelected
+                                          ? albumForm.subcategoryIds.filter(
+                                              (id) => id !== sub.id
+                                            )
+                                          : [
+                                              ...albumForm.subcategoryIds,
+                                              sub.id,
+                                            ],
+                                      });
+                                    }}
+                                    className={cn(
+                                      "px-3 py-1.5 rounded-full text-sm font-medium",
+                                      "transition-all duration-200",
+                                      "cursor-pointer",
+                                      "border",
+                                      albumForm.subcategoryIds.includes(sub.id)
+                                        ? "bg-accent text-accent-foreground border-accent"
+                                        : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+                                    )}
+                                  >
+                                    {sub.name}
+                                  </button>
+                                ))}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              All photos will be tagged with selected
+                              subcategories
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Location and Date */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="album-location"
+                            className="text-sm font-medium text-foreground flex items-center gap-2"
+                          >
+                            <MapPin className="w-4 h-4 text-muted-foreground" />
+                            Location
+                          </label>
+                          <Input
+                            id="album-location"
+                            type="text"
+                            placeholder="e.g., Tokyo, Japan"
+                            value={albumForm.location}
+                            onChange={(e) =>
+                              setAlbumForm({
+                                ...albumForm,
+                                location: e.target.value,
+                              })
+                            }
+                            className="bg-background/50"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="album-date"
+                            className="text-sm font-medium text-foreground flex items-center gap-2"
+                          >
+                            <Calendar className="w-4 h-4 text-muted-foreground" />
+                            Date Taken
+                          </label>
+                          <Input
+                            id="album-date"
+                            type="date"
+                            value={albumForm.date}
+                            onChange={(e) =>
+                              setAlbumForm({
+                                ...albumForm,
+                                date: e.target.value,
+                              })
+                            }
+                            className="bg-background/50"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Upload Progress */}
+                      {albumUploadProgress.uploading && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-muted-foreground">
+                              Uploading...
+                            </span>
+                            <span className="text-foreground font-medium">
+                              {albumUploadProgress.uploaded} /{" "}
+                              {albumUploadProgress.total}
+                            </span>
+                          </div>
+                          <div className="w-full bg-secondary/50 rounded-full h-2 overflow-hidden">
+                            <div
+                              className="bg-accent h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${
+                                  (albumUploadProgress.uploaded /
+                                    albumUploadProgress.total) *
+                                  100
+                                }%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Error List */}
+                      {albumUploadProgress.errors.length > 0 && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg">
+                          <p className="text-sm font-medium text-red-500 mb-2">
+                            Failed to upload {albumUploadProgress.errors.length}{" "}
+                            file(s):
+                          </p>
+                          <ul className="text-xs text-red-400 space-y-1">
+                            {albumUploadProgress.errors.map((err, idx) => (
+                              <li key={idx}>
+                                • {err.filename}: {err.error}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {/* Submit Button */}
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={clearAlbumFiles}
+                          className="cursor-pointer"
+                          disabled={albumUploadProgress.uploading}
+                        >
+                          <X className="w-4 h-4 mr-2" />
+                          Clear All
+                        </Button>
+                        <Button
+                          type="submit"
+                          className="cursor-pointer"
+                          disabled={
+                            albumUploadProgress.uploading ||
+                            albumFiles.length === 0
+                          }
+                        >
+                          <Upload className="w-4 h-4 mr-2" />
+                          {albumUploadProgress.uploading
+                            ? "Uploading..."
+                            : `Upload ${albumFiles.length} Photo${
+                                albumFiles.length !== 1 ? "s" : ""
+                              }`}
+                        </Button>
+                      </div>
+                    </form>
+                  </CardContent>
+                </Card>
+
+                {/* Single Photo Upload */}
                 <Card className="bg-card/50 backdrop-blur-sm border-border/50">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Upload className="w-5 h-5 text-accent" />
-                      Add New Photo
+                      Add Single Photo
                     </CardTitle>
                     <CardDescription>
-                      Add a new photo to your gallery
+                      Add a single photo with custom title and alt text
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -1472,9 +2042,9 @@ export function AdminPage() {
 
                 {/* Edit Photo Modal */}
                 {editingPhoto && (
-                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-                    <Card className="w-full max-w-lg mx-4 bg-card border-border">
-                      <CardHeader>
+                  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                    <Card className="w-full max-w-lg bg-card border-border max-h-[90vh] overflow-hidden flex flex-col">
+                      <CardHeader className="flex-shrink-0">
                         <CardTitle className="flex items-center gap-2">
                           <Edit className="w-5 h-5 text-accent" />
                           Edit Photo
@@ -1483,19 +2053,11 @@ export function AdminPage() {
                           Update photo information
                         </CardDescription>
                       </CardHeader>
-                      <CardContent>
+                      <CardContent className="overflow-y-auto flex-1">
                         <form
                           onSubmit={(e) => {
                             e.preventDefault();
-                            const formData = new FormData(e.currentTarget);
-                            handleSavePhoto(editingPhoto.id, {
-                              title: formData.get("title") as string,
-                              alt: formData.get("alt") as string,
-                              location:
-                                (formData.get("location") as string) ||
-                                undefined,
-                              category: formData.get("category") as string,
-                            });
+                            handleSavePhoto(editingPhoto.id);
                           }}
                           className="space-y-4"
                         >
@@ -1512,15 +2074,22 @@ export function AdminPage() {
                           <div className="space-y-2">
                             <label
                               htmlFor="edit-title"
-                              className="text-sm font-medium"
+                              className="text-sm font-medium flex items-center gap-2"
                             >
-                              Title
+                              Title <span className="text-red-500">*</span>
                             </label>
                             <Input
                               id="edit-title"
                               name="title"
-                              defaultValue={editingPhoto.title || ""}
+                              value={editPhotoForm.title}
+                              onChange={(e) =>
+                                setEditPhotoForm({
+                                  ...editPhotoForm,
+                                  title: e.target.value,
+                                })
+                              }
                               className="bg-background/50"
+                              placeholder="Enter photo title"
                             />
                           </div>
 
@@ -1528,52 +2097,191 @@ export function AdminPage() {
                           <div className="space-y-2">
                             <label
                               htmlFor="edit-alt"
-                              className="text-sm font-medium"
+                              className="text-sm font-medium flex items-center gap-2"
                             >
-                              Alt Text
+                              Alt Text <span className="text-red-500">*</span>
                             </label>
                             <Input
                               id="edit-alt"
                               name="alt"
-                              defaultValue={editingPhoto.alt || ""}
+                              value={editPhotoForm.alt}
+                              onChange={(e) =>
+                                setEditPhotoForm({
+                                  ...editPhotoForm,
+                                  alt: e.target.value,
+                                })
+                              }
                               className="bg-background/50"
+                              placeholder="Describe the image for accessibility"
                             />
                           </div>
 
-                          {/* Category */}
+                          {/* Category Selection */}
                           <div className="space-y-2">
                             <label
                               htmlFor="edit-category"
-                              className="text-sm font-medium"
+                              className="text-sm font-medium flex items-center gap-2"
                             >
-                              Category
+                              <Tag className="w-4 h-4 text-muted-foreground" />
+                              Category <span className="text-red-500">*</span>
                             </label>
-                            <Input
+                            <select
                               id="edit-category"
-                              name="category"
-                              defaultValue={editingPhoto.category || ""}
-                              className="bg-background/50"
-                            />
+                              value={editPhotoForm.categoryId || ""}
+                              onChange={(e) => {
+                                const categoryId = e.target.value
+                                  ? Number(e.target.value)
+                                  : null;
+                                setEditPhotoForm({
+                                  ...editPhotoForm,
+                                  categoryId,
+                                  subcategoryIds: [],
+                                });
+                              }}
+                              className={cn(
+                                "w-full h-10 px-3 rounded-md border bg-background/50",
+                                "text-sm text-foreground",
+                                "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
+                                "border-input cursor-pointer"
+                              )}
+                            >
+                              <option value="">Select a category...</option>
+                              {categoriesData.map((category) => (
+                                <option key={category.id} value={category.id}>
+                                  {category.name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
+
+                          {/* Subcategories */}
+                          {editPhotoForm.categoryId && (
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium flex items-center gap-2">
+                                <Tag className="w-4 h-4 text-muted-foreground" />
+                                Subcategories
+                              </label>
+                              <div className="flex flex-wrap gap-2">
+                                {categoriesData
+                                  .find(
+                                    (c) => c.id === editPhotoForm.categoryId
+                                  )
+                                  ?.subcategories.map((sub) => {
+                                    const isSelected =
+                                      editPhotoForm.subcategoryIds.includes(
+                                        sub.id
+                                      );
+                                    return (
+                                      <button
+                                        key={sub.id}
+                                        type="button"
+                                        onClick={() => {
+                                          setEditPhotoForm({
+                                            ...editPhotoForm,
+                                            subcategoryIds: isSelected
+                                              ? editPhotoForm.subcategoryIds.filter(
+                                                  (id) => id !== sub.id
+                                                )
+                                              : [
+                                                  ...editPhotoForm.subcategoryIds,
+                                                  sub.id,
+                                                ],
+                                          });
+                                        }}
+                                        className={cn(
+                                          "px-3 py-1.5 rounded-full text-sm font-medium",
+                                          "transition-all duration-200",
+                                          "cursor-pointer",
+                                          "border",
+                                          isSelected
+                                            ? "bg-accent text-accent-foreground border-accent"
+                                            : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+                                        )}
+                                      >
+                                        {sub.name}
+                                      </button>
+                                    );
+                                  })}
+                              </div>
+                              {categoriesData.find(
+                                (c) => c.id === editPhotoForm.categoryId
+                              )?.subcategories.length === 0 && (
+                                <p className="text-xs text-muted-foreground">
+                                  No subcategories available for this category
+                                </p>
+                              )}
+                            </div>
+                          )}
 
                           {/* Location */}
                           <div className="space-y-2">
                             <label
                               htmlFor="edit-location"
-                              className="text-sm font-medium"
+                              className="text-sm font-medium flex items-center gap-2"
                             >
+                              <MapPin className="w-4 h-4 text-muted-foreground" />
                               Location
                             </label>
                             <Input
                               id="edit-location"
                               name="location"
-                              defaultValue={editingPhoto.location || ""}
+                              value={editPhotoForm.location}
+                              onChange={(e) =>
+                                setEditPhotoForm({
+                                  ...editPhotoForm,
+                                  location: e.target.value,
+                                })
+                              }
+                              className="bg-background/50"
+                              placeholder="e.g., Tokyo, Japan"
+                            />
+                          </div>
+
+                          {/* Date Taken */}
+                          <div className="space-y-2">
+                            <label
+                              htmlFor="edit-date"
+                              className="text-sm font-medium flex items-center gap-2"
+                            >
+                              <Calendar className="w-4 h-4 text-muted-foreground" />
+                              Date Taken
+                            </label>
+                            <Input
+                              id="edit-date"
+                              name="dateTaken"
+                              type="date"
+                              value={editPhotoForm.dateTaken}
+                              onChange={(e) =>
+                                setEditPhotoForm({
+                                  ...editPhotoForm,
+                                  dateTaken: e.target.value,
+                                })
+                              }
                               className="bg-background/50"
                             />
                           </div>
 
+                          {/* Current Info Summary */}
+                          {(editingPhoto.subcategories?.length || 0) > 0 && (
+                            <div className="p-3 rounded-lg bg-secondary/30 border border-border/50">
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Current subcategories:
+                              </p>
+                              <div className="flex flex-wrap gap-1">
+                                {editingPhoto.subcategories?.map((sub) => (
+                                  <span
+                                    key={sub.id}
+                                    className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground text-xs"
+                                  >
+                                    {sub.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
                           {/* Actions */}
-                          <div className="flex justify-end gap-3 pt-4">
+                          <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
                             <Button
                               type="button"
                               variant="outline"
@@ -1582,7 +2290,15 @@ export function AdminPage() {
                             >
                               Cancel
                             </Button>
-                            <Button type="submit" className="cursor-pointer">
+                            <Button
+                              type="submit"
+                              className="cursor-pointer"
+                              disabled={
+                                !editPhotoForm.title ||
+                                !editPhotoForm.alt ||
+                                !editPhotoForm.categoryId
+                              }
+                            >
                               <Save className="w-4 h-4 mr-2" />
                               Save Changes
                             </Button>

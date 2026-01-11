@@ -1,20 +1,86 @@
 import { cn } from "@/lib/utils";
+import DOMPurify from "dompurify";
+import { useMemo } from "react";
 
 interface RichContentProps {
   content: string;
   className?: string;
 }
 
+// Configure DOMPurify to allow safe HTML tags for rich content
+const sanitizeConfig: DOMPurify.Config = {
+  ALLOWED_TAGS: [
+    "p",
+    "br",
+    "strong",
+    "em",
+    "u",
+    "s",
+    "sub",
+    "sup",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "ul",
+    "ol",
+    "li",
+    "blockquote",
+    "pre",
+    "code",
+    "a",
+    "img",
+    "figure",
+    "figcaption",
+    "table",
+    "thead",
+    "tbody",
+    "tr",
+    "th",
+    "td",
+    "div",
+    "span",
+    "hr",
+  ],
+  ALLOWED_ATTR: [
+    "href",
+    "target",
+    "rel",
+    "src",
+    "alt",
+    "title",
+    "width",
+    "height",
+    "class",
+    "id",
+    "style",
+    "colspan",
+    "rowspan",
+  ],
+  ALLOW_DATA_ATTR: false,
+  ADD_ATTR: ["target"], // Allow target attribute for links
+  FORBID_TAGS: ["script", "iframe", "object", "embed", "form", "input"],
+  FORBID_ATTR: ["onerror", "onload", "onclick", "onmouseover"],
+};
+
 /**
  * Component to render HTML content from CKEditor with proper styling
  * This ensures the blog post looks the same as in the editor
+ * HTML is sanitized with DOMPurify to prevent XSS attacks
  */
 export function RichContent({ content, className }: RichContentProps) {
+  // Sanitize HTML content to prevent XSS attacks
+  const sanitizedContent = useMemo(() => {
+    return DOMPurify.sanitize(content, sanitizeConfig);
+  }, [content]);
+
   return (
     <>
-      <div 
+      <div
         className={cn("rich-content", className)}
-        dangerouslySetInnerHTML={{ __html: content }} 
+        dangerouslySetInnerHTML={{ __html: sanitizedContent }}
       />
       <style>{`
         .rich-content {
