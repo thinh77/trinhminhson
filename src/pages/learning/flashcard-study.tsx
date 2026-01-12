@@ -19,44 +19,114 @@ import { useAuth } from "../../contexts/AuthContext";
 
 // SVG Icons
 const BackIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M15 19l-7-7 7-7"
+    />
   </svg>
 );
 
 const ShuffleIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
   </svg>
 );
 
 const ResetIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
   </svg>
 );
 
 const SkipBackIcon = () => (
-  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+  <svg
+    className="w-5 h-5"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M11 19l-7-7 7-7m8 14l-7-7 7-7"
+    />
   </svg>
 );
 
 const ChevronLeftIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+  <svg
+    className="w-8 h-8"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.5}
+      d="M15 19l-7-7 7-7"
+    />
   </svg>
 );
 
 const ChevronRightIcon = () => (
-  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+  <svg
+    className="w-8 h-8"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2.5}
+      d="M9 5l7 7-7 7"
+    />
   </svg>
 );
 
 const RefreshIcon = () => (
-  <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+  <svg
+    className="w-6 h-6"
+    fill="none"
+    viewBox="0 0 24 24"
+    stroke="currentColor"
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      strokeWidth={2}
+      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+    />
   </svg>
 );
 
@@ -66,7 +136,9 @@ export function JapaneseFlashcardStudy() {
   const { isAuthenticated, loading: authLoading } = useAuth();
   const isGuest = !authLoading && !isAuthenticated;
 
-  const [vocabSet, setVocabSet] = useState<VocabularySetWithFlashcards | null>(null);
+  const [vocabSet, setVocabSet] = useState<VocabularySetWithFlashcards | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -85,8 +157,11 @@ export function JapaneseFlashcardStudy() {
     try {
       setLoading(true);
       if (!setId) return;
-      // Guest mode: always load all cards (includeAll=true) so they can preview everything
-      // Authenticated: load only unlearned cards (default behavior)
+      // The backend handles includeAll logic:
+      // - For guests: always returns all cards
+      // - For authenticated non-owners (community view): always returns all cards
+      // - For owners: respects includeAll parameter
+      // Frontend passes includeAll=true for guests as an explicit signal
       const data = await getVocabularySet(setId, isGuest);
       setVocabSet(data);
       setCards(data.flashcards || []);
@@ -97,7 +172,9 @@ export function JapaneseFlashcardStudy() {
       setCurrentFace(face);
       setFaceCount(data.face_count || 5);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load vocabulary set");
+      setError(
+        err instanceof Error ? err.message : "Failed to load vocabulary set"
+      );
     } finally {
       setLoading(false);
     }
@@ -239,10 +316,18 @@ export function JapaneseFlashcardStudy() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isReadOnly, goToNextCard, goToPrevCard, markLearnedAndNext, markNotLearnedAndNext, nextFace]);
+  }, [
+    isReadOnly,
+    goToNextCard,
+    goToPrevCard,
+    markLearnedAndNext,
+    markNotLearnedAndNext,
+    nextFace,
+  ]);
 
   // Progress percentage
-  const progressPercent = totalCount > 0 ? Math.round((learnedCount / totalCount) * 100) : 0;
+  const progressPercent =
+    totalCount > 0 ? Math.round((learnedCount / totalCount) * 100) : 0;
 
   // Loading State
   if (loading) {
@@ -251,7 +336,10 @@ export function JapaneseFlashcardStudy() {
         <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-teal-100">
           <div className="max-w-2xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Link to="/learning" className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer">
+              <Link
+                to="/learning"
+                className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
+              >
                 <BackIcon />
                 <span className="font-medium">Quay lại</span>
               </Link>
@@ -277,7 +365,10 @@ export function JapaneseFlashcardStudy() {
         <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-teal-100">
           <div className="max-w-2xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Link to="/learning" className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer">
+              <Link
+                to="/learning"
+                className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
+              >
                 <BackIcon />
                 <span className="font-medium">Quay lại</span>
               </Link>
@@ -289,8 +380,18 @@ export function JapaneseFlashcardStudy() {
         <main className="max-w-md mx-auto px-4 py-16">
           <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-8 text-center">
             <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center text-red-500">
-              <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+              <svg
+                className="w-8 h-8"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                />
               </svg>
             </div>
             <p className="text-red-600 mb-6">{error}</p>
@@ -314,19 +415,30 @@ export function JapaneseFlashcardStudy() {
         <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-teal-100">
           <div className="max-w-2xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Link to="/learning" className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer">
+              <Link
+                to="/learning"
+                className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
+              >
                 <BackIcon />
                 <span className="font-medium hidden sm:inline">Quay lại</span>
               </Link>
-              <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">{vocabSet?.name}</h1>
+              <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">
+                {vocabSet?.name}
+              </h1>
               <div className="w-20"></div>
             </div>
           </div>
         </header>
         <main className="max-w-md mx-auto px-4 py-16">
           <div className="bg-white rounded-3xl p-8 text-center shadow-xl">
-            <div className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl
-                            ${allLearned ? "bg-gradient-to-br from-emerald-400 to-teal-500" : "bg-gray-100"}`}>
+            <div
+              className={`w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center text-5xl
+                            ${
+                              allLearned
+                                ? "bg-gradient-to-br from-emerald-400 to-teal-500"
+                                : "bg-gray-100"
+                            }`}
+            >
               {allLearned ? "🎉" : "📭"}
             </div>
             <h3 className="text-2xl font-bold text-gray-800 mb-3">
@@ -354,7 +466,9 @@ export function JapaneseFlashcardStudy() {
               <div className="space-y-3">
                 {isGuest ? (
                   <>
-                    <p className="text-sm text-gray-400">Đăng nhập để theo dõi tiến độ học</p>
+                    <p className="text-sm text-gray-400">
+                      Đăng nhập để theo dõi tiến độ học
+                    </p>
                     <Link
                       to="/login"
                       className="inline-flex items-center gap-2 px-6 py-3 bg-teal-500 text-white rounded-xl hover:bg-teal-600 transition-colors cursor-pointer"
@@ -363,7 +477,9 @@ export function JapaneseFlashcardStudy() {
                     </Link>
                   </>
                 ) : (
-                  <p className="text-sm text-gray-400">Hãy thêm bộ này vào bộ của bạn để theo dõi tiến độ học</p>
+                  <p className="text-sm text-gray-400">
+                    Hãy thêm bộ này vào bộ của bạn để theo dõi tiến độ học
+                  </p>
                 )}
               </div>
             )}
@@ -383,11 +499,16 @@ export function JapaneseFlashcardStudy() {
         <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-teal-100">
           <div className="max-w-2xl mx-auto px-4 py-4">
             <div className="flex items-center justify-between">
-              <Link to="/learning" className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer">
+              <Link
+                to="/learning"
+                className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
+              >
                 <BackIcon />
                 <span className="font-medium hidden sm:inline">Quay lại</span>
               </Link>
-              <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">{vocabSet?.name}</h1>
+              <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">
+                {vocabSet?.name}
+              </h1>
               <div className="w-20"></div>
             </div>
           </div>
@@ -400,15 +521,18 @@ export function JapaneseFlashcardStudy() {
               <span className="font-semibold">Chế độ xem trước</span>
               {isGuest ? (
                 <>
-                  {" "}•{" "}
-                  <Link to="/login" className="text-teal-600 font-semibold hover:underline">Đăng nhập</Link>
-                  {" "}để theo dõi tiến độ học
+                  {" "}
+                  •{" "}
+                  <Link
+                    to="/login"
+                    className="text-teal-600 font-semibold hover:underline"
+                  >
+                    Đăng nhập
+                  </Link>{" "}
+                  để theo dõi tiến độ học
                 </>
               ) : (
-                <>
-                  {" "}•{" "}
-                  Thêm vào bộ của bạn để theo dõi tiến độ
-                </>
+                <> • Thêm vào bộ của bạn để theo dõi tiến độ</>
               )}
             </p>
           </div>
@@ -423,7 +547,9 @@ export function JapaneseFlashcardStudy() {
                     const result = await cloneVocabularySet(Number(setId));
                     navigate(`/learning/study/${result.setId}`);
                   } catch (err) {
-                    setError(err instanceof Error ? err.message : "Failed to clone set");
+                    setError(
+                      err instanceof Error ? err.message : "Failed to clone set"
+                    );
                   }
                 }}
                 className="px-5 py-3 rounded-2xl font-semibold text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30 hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer"
@@ -501,11 +627,16 @@ export function JapaneseFlashcardStudy() {
       <header className="sticky top-0 z-50 backdrop-blur-lg bg-white/80 border-b border-teal-100">
         <div className="max-w-2xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/learning" className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer">
+            <Link
+              to="/learning"
+              className="flex items-center gap-2 text-teal-700 hover:text-teal-900 transition-colors cursor-pointer"
+            >
               <BackIcon />
               <span className="font-medium hidden sm:inline">Quay lại</span>
             </Link>
-            <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">{vocabSet?.name}</h1>
+            <h1 className="text-lg font-bold text-teal-800 truncate max-w-[200px]">
+              {vocabSet?.name}
+            </h1>
             <div className="w-20"></div>
           </div>
         </div>
@@ -515,11 +646,15 @@ export function JapaneseFlashcardStudy() {
         {/* Progress Bar */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium text-gray-600">Tiến độ học</span>
-            <span className="text-sm font-bold text-teal-600">{learnedCount}/{totalCount} từ ({progressPercent}%)</span>
+            <span className="text-sm font-medium text-gray-600">
+              Tiến độ học
+            </span>
+            <span className="text-sm font-bold text-teal-600">
+              {learnedCount}/{totalCount} từ ({progressPercent}%)
+            </span>
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-            <div 
+            <div
               className="h-full bg-gradient-to-r from-teal-400 to-emerald-500 rounded-full transition-all duration-500 ease-out"
               style={{ width: `${progressPercent}%` }}
             ></div>
@@ -551,7 +686,9 @@ export function JapaneseFlashcardStudy() {
             <div className="w-14 h-14 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 group-hover:bg-amber-200 transition-colors">
               <ChevronLeftIcon />
             </div>
-            <span className="text-xs font-medium text-gray-500">Chưa thuộc</span>
+            <span className="text-xs font-medium text-gray-500">
+              Chưa thuộc
+            </span>
           </button>
 
           {/* Card Counter */}
@@ -582,13 +719,17 @@ export function JapaneseFlashcardStudy() {
 
         {/* Hint */}
         <div className="text-center text-sm text-gray-400 mb-8">
-          <span className="hidden sm:inline">Nhấn vào thẻ để xem mặt tiếp theo • </span>
+          <span className="hidden sm:inline">
+            Nhấn vào thẻ để xem mặt tiếp theo •{" "}
+          </span>
           <span className="inline-flex items-center gap-1">
-            <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs">←</kbd> Chưa thuộc
+            <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs">←</kbd>{" "}
+            Chưa thuộc
           </span>
           <span className="mx-2">•</span>
           <span className="inline-flex items-center gap-1">
-            <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs">→</kbd> Đã thuộc
+            <kbd className="px-2 py-0.5 bg-gray-100 rounded text-xs">→</kbd> Đã
+            thuộc
           </span>
         </div>
 
@@ -603,7 +744,7 @@ export function JapaneseFlashcardStudy() {
             <ShuffleIcon />
             <span>{shuffled ? "Đặt lại thứ tự" : "Trộn thẻ"}</span>
           </button>
-          
+
           <button
             onClick={() => {
               setCurrentIndex(0);
@@ -616,7 +757,7 @@ export function JapaneseFlashcardStudy() {
             <SkipBackIcon />
             <span>Từ đầu</span>
           </button>
-          
+
           <button
             onClick={resetAllCards}
             className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-200 
