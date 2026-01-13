@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import DOMPurify from "dompurify";
+import DOMPurify, { Config } from "dompurify";
 import { useMemo } from "react";
 
 interface RichContentProps {
@@ -8,7 +8,7 @@ interface RichContentProps {
 }
 
 // Configure DOMPurify to allow safe HTML tags for rich content
-const sanitizeConfig: DOMPurify.Config = {
+const sanitizeConfig: Config = {
   ALLOWED_TAGS: [
     "p",
     "br",

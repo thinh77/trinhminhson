@@ -46,7 +46,6 @@ import {
   deletePhoto,
   getPhotoUrl,
   type Photo,
-  type UpdatePhotoData,
 } from "@/services/photos.service";
 import { CategoryManagement } from "@/components/admin/CategoryManagement";
 import { getAllCategories, type Category } from "@/services/categories.service";
