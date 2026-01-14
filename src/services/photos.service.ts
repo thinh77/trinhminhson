@@ -47,8 +47,6 @@ export interface Photo {
 
 export interface UploadPhotoData {
   title: string;
-  alt: string;
-  location?: string;
   category: string;
   subcategoryIds?: number[];
   dateTaken?: string;
@@ -124,8 +122,6 @@ export async function uploadPhoto(
   const formData = new FormData();
   formData.append("file", file);
   formData.append("title", data.title);
-  formData.append("alt", data.alt);
-  if (data.location) formData.append("location", data.location);
   formData.append("category", data.category);
   if (data.subcategoryIds && data.subcategoryIds.length > 0) {
     formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
