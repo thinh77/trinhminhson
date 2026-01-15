@@ -17,7 +17,14 @@ interface FlashcardProps {
   showFaceIndicators?: boolean;
 }
 
-function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFaceIndicators = true }: FlashcardProps) {
+function Flashcard({
+  card,
+  currentFace,
+  faceCount,
+  onNextFace,
+  onSetFace,
+  showFaceIndicators = true,
+}: FlashcardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
   const [touchEnd, setTouchEnd] = useState<number | null>(null);
@@ -26,11 +33,11 @@ function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFa
   const minSwipeDistance = 50;
 
   const faceConfigs = useMemo(() => {
-    return Array.from({length: faceCount}, (_, i) => ({
+    return Array.from({ length: faceCount }, (_, i) => ({
       label: `Mặt ${i + 1}`,
       field: `face${i + 1}` as keyof FlashcardType,
       ...FACE_COLORS[i % FACE_COLORS.length],
-    }))
+    }));
   }, [faceCount]);
 
   function handleTouchStart(e: React.TouchEvent) {
@@ -73,7 +80,9 @@ function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFa
   const content = (card[currentConfig.field] as string) || "—";
 
   // Check if content contains Japanese characters
-  const isJapaneseContent = ["kanji", "pronunciation", "example"].includes(currentConfig.field);
+  const isJapaneseContent = ["kanji", "pronunciation", "example"].includes(
+    currentConfig.field
+  );
 
   return (
     <div className="w-full max-w-xl mx-auto">
@@ -84,40 +93,58 @@ function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFa
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         onClick={handleClick}
-        className="relative aspect-[16/8] cursor-pointer select-none"
+        className="relative aspect-[4/3] sm:aspect-[3/2] md:aspect-[16/9] cursor-pointer select-none"
       >
         {/* Card Body */}
-        <div className={`absolute inset-0 bg-gradient-to-br ${currentConfig.color} rounded-2xl 
-                        shadow-2xl shadow-gray-900/20 p-1 transition-all duration-300`}>
+        <div
+          className={`absolute inset-0 bg-gradient-to-br ${currentConfig.color} rounded-2xl 
+                        shadow-2xl shadow-gray-900/20 p-1 transition-all duration-300`}
+        >
           <div className="w-full h-full bg-white rounded-xl flex flex-col overflow-hidden">
             {/* Label Header */}
-            <div className={`px-4 py-2.5 ${currentConfig.bgLight} border-b border-gray-100`}>
-              <span className={`text-sm font-bold ${currentConfig.textColor} uppercase tracking-wider`}>
+            <div
+              className={`px-3 py-2 sm:px-4 sm:py-2.5 ${currentConfig.bgLight} border-b border-gray-100`}
+            >
+              <span
+                className={`text-xs sm:text-sm font-bold ${currentConfig.textColor} uppercase tracking-wider`}
+              >
                 {currentConfig.label}
               </span>
             </div>
-            
+
             {/* Content */}
-            <div className="flex-1 flex items-center justify-center p-6 sm:p-8">
-              <p 
-                className="text-center break-words leading-relaxed text-3xl sm:text-4xl lg:text-5xl font-medium text-gray-800"
-                            
-                style={isJapaneseContent ? { fontFamily: "'Noto Sans JP', 'Noto Serif JP', sans-serif" } : {}}
+            <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-auto">
+              <p
+                className="text-center break-words leading-relaxed text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-gray-800"
+                style={
+                  isJapaneseContent
+                    ? {
+                        fontFamily:
+                          "'Noto Sans JP', 'Noto Serif JP', sans-serif",
+                      }
+                    : {}
+                }
               >
                 {content}
               </p>
             </div>
 
             {/* Tap Hint */}
-            <div className="px-4 py-2.5 text-center border-t border-gray-100">
-              <span className="text-xs text-gray-400">Nhấn để xem mặt tiếp theo</span>
+            <div className="px-3 py-2 sm:px-4 sm:py-2.5 text-center border-t border-gray-100">
+              <span className="text-xs text-gray-400">
+                Nhấn để xem mặt tiếp theo
+              </span>
             </div>
           </div>
         </div>
 
         {/* Decorative Elements */}
-        <div className={`absolute -top-1.5 -right-1.5 w-6 h-6 bg-gradient-to-br ${currentConfig.color} rounded-full opacity-60 blur-sm`}></div>
-        <div className={`absolute -bottom-1.5 -left-1.5 w-5 h-5 bg-gradient-to-br ${currentConfig.color} rounded-full opacity-40 blur-sm`}></div>
+        <div
+          className={`absolute -top-1.5 -right-1.5 w-6 h-6 bg-gradient-to-br ${currentConfig.color} rounded-full opacity-60 blur-sm`}
+        ></div>
+        <div
+          className={`absolute -bottom-1.5 -left-1.5 w-5 h-5 bg-gradient-to-br ${currentConfig.color} rounded-full opacity-40 blur-sm`}
+        ></div>
       </div>
 
       {/* Face Indicators - Only shown when showFaceIndicators is true */}
@@ -131,21 +158,30 @@ function Flashcard({ card, currentFace, faceCount, onNextFace, onSetFace, showFa
                 onSetFace(index);
               }}
               className={`group relative cursor-pointer transition-all duration-200
-                          ${safeCurrentFace === index ? "scale-110" : "hover:scale-105"}`}
+                          ${
+                            safeCurrentFace === index
+                              ? "scale-110"
+                              : "hover:scale-105"
+                          }`}
               title={config.label}
             >
-              <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold
+              <div
+                className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold
                               transition-all duration-200
-                              ${safeCurrentFace === index 
-                                ? `bg-gradient-to-br ${config.color} text-white shadow-lg` 
-                                : `${config.bgLight} ${config.textColor} hover:shadow-md`
-                              }`}>
+                              ${
+                                safeCurrentFace === index
+                                  ? `bg-gradient-to-br ${config.color} text-white shadow-lg`
+                                  : `${config.bgLight} ${config.textColor} hover:shadow-md`
+                              }`}
+              >
                 {index + 1}
               </div>
-              
+
               {/* Tooltip */}
-              <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md
-                              opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+              <div
+                className="absolute -bottom-8 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-800 text-white text-xs rounded-md
+                              opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none"
+              >
                 {config.label}
               </div>
             </button>
