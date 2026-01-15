@@ -11,42 +11,52 @@ import {
   Tag,
   RotateCcw,
 } from "lucide-react";
-import { getPhotos } from "@/services/photos.service";
 import { getAllCategories, type Category } from "@/services/categories.service";
 import { FilterPanel, PhotoGrid, PhotoLightbox } from "./components";
 import { usePhotoFilters } from "./hooks/usePhotoFilters";
-import { mapApiPhotoToDisplay, type Photo } from "./types";
+import { useInfinitePhotos } from "./hooks/useInfinitePhotos";
+import type { Photo } from "./types";
 
 export function PhotosPage(): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [photos, setPhotos] = useState<Photo[]>([]);
   const [categoriesData, setCategoriesData] = useState<Category[]>([]);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
+  const { photos, isLoading, isLoadingMore, hasMore, loadMore, loadAll } =
+    useInfinitePhotos();
+
   const filters = usePhotoFilters(photos);
 
+  // Check if any filter is active
+  const hasActiveFilters =
+    filters.activeCategories.size > 0 || filters.activeSubcategories.size > 0;
+
+  // Load all photos when filter is applied
   useEffect(() => {
-    async function loadData(): Promise<void> {
+    if (hasActiveFilters && hasMore) {
+      loadAll();
+    }
+  }, [hasActiveFilters, hasMore, loadAll]);
+
+  useEffect(() => {
+    async function loadCategories(): Promise<void> {
       try {
-        setIsLoading(true);
-        const [photosData, categories] = await Promise.all([
-          getPhotos(),
-          getAllCategories(false),
-        ]);
-        setPhotos(photosData.map(mapApiPhotoToDisplay));
+        const categories = await getAllCategories(false);
         setCategoriesData(categories);
       } catch (error) {
-        console.error("Failed to load photos:", error);
-      } finally {
-        setIsLoading(false);
-        setTimeout(() => setIsLoaded(true), 100);
+        console.error("Failed to load categories:", error);
       }
     }
-    loadData();
+    loadCategories();
   }, []);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setTimeout(() => setIsLoaded(true), 100);
+    }
+  }, [isLoading]);
 
   const currentIndex = selectedPhoto
     ? filters.filteredPhotos.findIndex((p) => p.id === selectedPhoto.id)
@@ -133,6 +143,9 @@ export function PhotosPage(): React.ReactElement {
               loadedImages={loadedImages}
               onImageLoad={handleImageLoad}
               onPhotoSelect={setSelectedPhoto}
+              hasMore={!hasActiveFilters && hasMore}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMore}
             />
           )}
         </div>

@@ -8,13 +8,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import {
-  Upload,
-  X,
-  Tag,
-  Calendar,
-  AlertCircle,
-} from "lucide-react";
+import { Upload, X, Tag, Calendar, AlertCircle } from "lucide-react";
 import type { Category } from "@/services/categories.service";
 import type { PhotoFormData } from "../types";
 
@@ -41,28 +35,48 @@ export function SinglePhotoUpload({
   onSubmit,
   onClear,
 }: SinglePhotoUploadProps): React.ReactElement {
-  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  // Get all selected categories
+  const selectedCategories = categories.filter((c) =>
+    form.categoryIds.includes(c.id)
+  );
+
+  // Get all available subcategories from selected categories
+  const availableSubcategories = selectedCategories.flatMap((cat) =>
+    cat.subcategories.map((sub) => ({ ...sub, categoryName: cat.name }))
+  );
 
   function handleFileChange(file: File): void {
     const previewUrl = URL.createObjectURL(file);
     onPreviewChange(previewUrl);
 
-    if (!form.title) {
-      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "");
-      onFormChange({ ...form, file, title: nameWithoutExt });
-    } else {
-      onFormChange({ ...form, file });
-    }
+    const title = form.title || file.name.replace(/\.[^/.]+$/, "");
+    onFormChange({ ...form, file, title });
+  }
+
+  function toggleCategory(id: number): void {
+    const isSelected = form.categoryIds.includes(id);
+    const categoryIds = isSelected
+      ? form.categoryIds.filter((cid) => cid !== id)
+      : [...form.categoryIds, id];
+
+    // Filter out subcategories that no longer belong to selected categories
+    const selectedCats = categories.filter((c) => categoryIds.includes(c.id));
+    const validSubcategoryIds = selectedCats.flatMap((cat) =>
+      cat.subcategories.map((s) => s.id)
+    );
+    const subcategoryIds = form.subcategoryIds.filter((sid) =>
+      validSubcategoryIds.includes(sid)
+    );
+
+    onFormChange({ ...form, categoryIds, subcategoryIds });
   }
 
   function toggleSubcategory(id: number): void {
     const isSelected = form.subcategoryIds.includes(id);
-    onFormChange({
-      ...form,
-      subcategoryIds: isSelected
-        ? form.subcategoryIds.filter((sid) => sid !== id)
-        : [...form.subcategoryIds, id],
-    });
+    const subcategoryIds = isSelected
+      ? form.subcategoryIds.filter((sid) => sid !== id)
+      : [...form.subcategoryIds, id];
+    onFormChange({ ...form, subcategoryIds });
   }
 
   return (
@@ -79,7 +93,12 @@ export function SinglePhotoUpload({
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Title */}
-          <FormField id="photo-title" label="Description" required error={errors.title}>
+          <FormField
+            id="photo-title"
+            label="Description"
+            required
+            error={errors.title}
+          >
             <Input
               id="photo-title"
               type="text"
@@ -112,45 +131,43 @@ export function SinglePhotoUpload({
           {/* Category */}
           <FormField
             id="photo-category"
-            label="Category"
+            label="Categories"
             required
             icon={<Tag className="w-4 h-4 text-muted-foreground" />}
-            error={errors.categoryId}
+            error={errors.categoryIds}
           >
-            <select
-              id="photo-category"
-              value={form.categoryId || ""}
-              onChange={(e) => {
-                const categoryId = e.target.value ? Number(e.target.value) : null;
-                onFormChange({ ...form, categoryId, subcategoryIds: [] });
-              }}
-              className={cn(
-                "w-full h-10 px-3 rounded-md border bg-background/50",
-                "text-sm text-foreground",
-                "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
-                errors.categoryId
-                  ? "border-red-500 focus:ring-red-500"
-                  : "border-input"
-              )}
-            >
-              <option value="">Select a category...</option>
+            <div className="flex flex-wrap gap-2">
               {categories.map((category) => (
-                <option key={category.id} value={category.id}>
+                <button
+                  key={category.id}
+                  type="button"
+                  onClick={() => toggleCategory(category.id)}
+                  className={cn(
+                    "px-3 py-1.5 rounded-full text-sm font-medium",
+                    "transition-all duration-200 cursor-pointer border",
+                    form.categoryIds.includes(category.id)
+                      ? "bg-accent text-accent-foreground border-accent"
+                      : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+                  )}
+                >
                   {category.name}
-                </option>
+                </button>
               ))}
-            </select>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Click to select/deselect categories (at least one required)
+            </p>
           </FormField>
 
           {/* Subcategories */}
-          {selectedCategory && (
+          {availableSubcategories.length > 0 && (
             <div className="space-y-2">
               <label className="text-sm font-medium text-foreground flex items-center gap-2">
                 <Tag className="w-4 h-4 text-muted-foreground" />
                 Subcategories
               </label>
               <div className="flex flex-wrap gap-2">
-                {selectedCategory.subcategories.map((sub) => (
+                {availableSubcategories.map((sub) => (
                   <button
                     key={sub.id}
                     type="button"
@@ -162,6 +179,7 @@ export function SinglePhotoUpload({
                         ? "bg-accent text-accent-foreground border-accent"
                         : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
                     )}
+                    title={`Category: ${sub.categoryName}`}
                   >
                     {sub.name}
                   </button>
@@ -272,7 +290,9 @@ function ImageDropZone({
           <p className="text-sm font-medium text-foreground">
             Click to upload or drag and drop
           </p>
-          <p className="text-xs text-muted-foreground">PNG, JPG, GIF up to 10MB</p>
+          <p className="text-xs text-muted-foreground">
+            PNG, JPG, GIF up to 10MB
+          </p>
         </div>
       )}
     </div>

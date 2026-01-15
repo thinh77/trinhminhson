@@ -22,11 +22,17 @@ interface FilterPanelProps {
   expandedCategories: Set<number>;
   onToggleCategoryExpand: (categoryId: number) => void;
   onToggleCategoryFilter: (categoryName: string, categoryId: number) => void;
-  onToggleSubcategoryFilter: (categoryName: string, subcategoryName: string) => void;
+  onToggleSubcategoryFilter: (
+    categoryName: string,
+    subcategoryName: string
+  ) => void;
   onClearAllFilters: () => void;
   onSelectAllSubcategories: (category: Category) => void;
   onDeselectAllSubcategories: (categoryName: string) => void;
-  getSubcategoryPhotoCount: (categoryName: string, subcategoryName: string) => number;
+  getSubcategoryPhotoCount: (
+    categoryName: string,
+    subcategoryName: string
+  ) => number;
   isAllSubcategoriesSelected: (category: Category) => boolean;
   isSomeSubcategoriesSelected: (categoryName: string) => boolean;
   getActiveFiltersCount: () => number;
@@ -205,10 +211,16 @@ interface CategoriesSectionProps {
   expandedCategories: Set<number>;
   onToggleCategoryExpand: (categoryId: number) => void;
   onToggleCategoryFilter: (categoryName: string, categoryId: number) => void;
-  onToggleSubcategoryFilter: (categoryName: string, subcategoryName: string) => void;
+  onToggleSubcategoryFilter: (
+    categoryName: string,
+    subcategoryName: string
+  ) => void;
   onSelectAllSubcategories: (category: Category) => void;
   onDeselectAllSubcategories: (categoryName: string) => void;
-  getSubcategoryPhotoCount: (categoryName: string, subcategoryName: string) => number;
+  getSubcategoryPhotoCount: (
+    categoryName: string,
+    subcategoryName: string
+  ) => number;
   isAllSubcategoriesSelected: (category: Category) => boolean;
   isSomeSubcategoriesSelected: (categoryName: string) => boolean;
 }
@@ -238,17 +250,23 @@ function CategoriesSection({
           <CategoryItem
             key={category.id}
             category={category}
-            photoCount={photos.filter((p) => p.category === category.name).length}
+            photoCount={
+              photos.filter((p) => p.categories.includes(category.name)).length
+            }
             isExpanded={expandedCategories.has(category.id)}
             isSelected={activeCategories.has(category.name)}
             hasSomeSubsSelected={isSomeSubcategoriesSelected(category.name)}
             hasAllSubsSelected={isAllSubcategoriesSelected(category)}
             activeSubcategories={activeSubcategories}
             onToggleExpand={() => onToggleCategoryExpand(category.id)}
-            onToggleFilter={() => onToggleCategoryFilter(category.name, category.id)}
+            onToggleFilter={() =>
+              onToggleCategoryFilter(category.name, category.id)
+            }
             onToggleSubcategoryFilter={onToggleSubcategoryFilter}
             onSelectAllSubcategories={() => onSelectAllSubcategories(category)}
-            onDeselectAllSubcategories={() => onDeselectAllSubcategories(category.name)}
+            onDeselectAllSubcategories={() =>
+              onDeselectAllSubcategories(category.name)
+            }
             getSubcategoryPhotoCount={getSubcategoryPhotoCount}
           />
         ))}
@@ -267,10 +285,16 @@ interface CategoryItemProps {
   activeSubcategories: Set<string>;
   onToggleExpand: () => void;
   onToggleFilter: () => void;
-  onToggleSubcategoryFilter: (categoryName: string, subcategoryName: string) => void;
+  onToggleSubcategoryFilter: (
+    categoryName: string,
+    subcategoryName: string
+  ) => void;
   onSelectAllSubcategories: () => void;
   onDeselectAllSubcategories: () => void;
-  getSubcategoryPhotoCount: (categoryName: string, subcategoryName: string) => number;
+  getSubcategoryPhotoCount: (
+    categoryName: string,
+    subcategoryName: string
+  ) => number;
 }
 
 function CategoryItem({
@@ -288,7 +312,8 @@ function CategoryItem({
   onDeselectAllSubcategories,
   getSubcategoryPhotoCount,
 }: CategoryItemProps): React.ReactElement {
-  const hasSubcategories = category.subcategories && category.subcategories.length > 0;
+  const hasSubcategories =
+    category.subcategories && category.subcategories.length > 0;
 
   return (
     <div className="rounded-lg overflow-hidden">
@@ -413,10 +438,16 @@ interface SubcategoriesListProps {
   activeSubcategories: Set<string>;
   hasAllSubsSelected: boolean;
   hasSomeSubsSelected: boolean;
-  onToggleSubcategoryFilter: (categoryName: string, subcategoryName: string) => void;
+  onToggleSubcategoryFilter: (
+    categoryName: string,
+    subcategoryName: string
+  ) => void;
   onSelectAllSubcategories: () => void;
   onDeselectAllSubcategories: () => void;
-  getSubcategoryPhotoCount: (categoryName: string, subcategoryName: string) => number;
+  getSubcategoryPhotoCount: (
+    categoryName: string,
+    subcategoryName: string
+  ) => number;
 }
 
 function SubcategoriesList({
@@ -471,7 +502,10 @@ function SubcategoriesList({
         {category.subcategories.map((sub) => {
           const subKey = `${category.name}:${sub.name}`;
           const isSubSelected = activeSubcategories.has(subKey);
-          const subPhotoCount = getSubcategoryPhotoCount(category.name, sub.name);
+          const subPhotoCount = getSubcategoryPhotoCount(
+            category.name,
+            sub.name
+          );
 
           return (
             <label

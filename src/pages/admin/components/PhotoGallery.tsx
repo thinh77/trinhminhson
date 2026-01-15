@@ -1,3 +1,4 @@
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,9 +17,13 @@ import {
   Save,
   Tag,
   Calendar,
-  MapPin,
+  GripVertical,
 } from "lucide-react";
-import { getPhotoUrl, type Photo } from "@/services/photos.service";
+import {
+  getPhotoUrl,
+  reorderPhotos,
+  type Photo,
+} from "@/services/photos.service";
 import type { Category } from "@/services/categories.service";
 import type { EditPhotoFormData } from "../types";
 
@@ -36,6 +41,7 @@ interface PhotoGalleryProps {
   onSave: (photoId: number) => void;
   onCancelEdit: () => void;
   onEditFormChange: (form: EditPhotoFormData) => void;
+  onPhotosReordered?: () => void;
 }
 
 export function PhotoGallery({
@@ -52,14 +58,20 @@ export function PhotoGallery({
   onSave,
   onCancelEdit,
   onEditFormChange,
+  onPhotosReordered,
 }: PhotoGalleryProps): React.ReactElement {
   const filteredPhotos = photos.filter(
     (photo) =>
       photo.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
       photo.alt?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      photo.category?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      photo.categories?.some((cat) =>
+        cat.name.toLowerCase().includes(searchQuery.toLowerCase())
+      ) ||
       photo.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Disable drag when searching
+  const isDragEnabled = !searchQuery;
 
   return (
     <>
@@ -72,7 +84,9 @@ export function PhotoGallery({
                 Manage Photos
               </CardTitle>
               <CardDescription>
-                View, edit, and delete your uploaded photos
+                {isDragEnabled
+                  ? "Drag photos to reorder. View, edit, and delete your uploaded photos"
+                  : "View, edit, and delete your uploaded photos"}
               </CardDescription>
             </div>
             <div className="relative">
@@ -92,8 +106,10 @@ export function PhotoGallery({
             totalPhotos={photos.length}
             isLoading={isLoading}
             deletingPhotoId={deletingPhotoId}
+            isDragEnabled={isDragEnabled}
             onEdit={onEdit}
             onDelete={onDelete}
+            onReorder={onPhotosReordered}
           />
         </CardContent>
       </Card>
@@ -117,8 +133,10 @@ interface PhotoGridContentProps {
   totalPhotos: number;
   isLoading: boolean;
   deletingPhotoId: number | null;
+  isDragEnabled: boolean;
   onEdit: (photo: Photo) => void;
   onDelete: (photoId: number) => void;
+  onReorder?: () => void;
 }
 
 function PhotoGridContent({
@@ -126,9 +144,100 @@ function PhotoGridContent({
   totalPhotos,
   isLoading,
   deletingPhotoId,
+  isDragEnabled,
   onEdit,
   onDelete,
 }: PhotoGridContentProps): React.ReactElement {
+  const [draggedId, setDraggedId] = useState<number | null>(null);
+  const [dragOverId, setDragOverId] = useState<number | null>(null);
+  const [localPhotos, setLocalPhotos] = useState<Photo[]>(photos);
+  const [isSaving, setIsSaving] = useState(false);
+  const isReorderingRef = useRef(false);
+  const localIdsRef = useRef<string>(photos.map((p) => p.id).join(","));
+
+  // Sync local state with props only when photos actually change (by comparing IDs)
+  useEffect(() => {
+    if (isReorderingRef.current) return;
+
+    const propsIds = photos.map((p) => p.id).join(",");
+
+    // Only update if the photo list actually changed (new photos added/removed)
+    if (localIdsRef.current !== propsIds) {
+      localIdsRef.current = propsIds;
+      setLocalPhotos(photos);
+    }
+  }, [photos]);
+
+  function handleDragStart(e: React.DragEvent, photoId: number): void {
+    setDraggedId(photoId);
+    e.dataTransfer.effectAllowed = "move";
+  }
+
+  function handleDragOver(e: React.DragEvent, photoId: number): void {
+    e.preventDefault();
+    if (draggedId === photoId) return;
+    setDragOverId(photoId);
+  }
+
+  function handleDragLeave(): void {
+    setDragOverId(null);
+  }
+
+  async function handleDrop(
+    e: React.DragEvent,
+    targetId: number
+  ): Promise<void> {
+    e.preventDefault();
+
+    if (!draggedId || draggedId === targetId) {
+      setDraggedId(null);
+      setDragOverId(null);
+      return;
+    }
+
+    const draggedIndex = localPhotos.findIndex((p) => p.id === draggedId);
+    const targetIndex = localPhotos.findIndex((p) => p.id === targetId);
+    if (draggedIndex === -1 || targetIndex === -1) return;
+
+    // Reorder locally
+    const newPhotos = [...localPhotos];
+    const [removed] = newPhotos.splice(draggedIndex, 1);
+    newPhotos.splice(targetIndex, 0, removed);
+
+    // Update local state and ref to prevent re-sync from props
+    setLocalPhotos(newPhotos);
+    localIdsRef.current = newPhotos.map((p) => p.id).join(",");
+
+    // Save to backend
+    isReorderingRef.current = true;
+    setIsSaving(true);
+    try {
+      const orderedPhotos = newPhotos.map((photo, index) => ({
+        id: photo.id,
+        displayOrder: index,
+      }));
+      await reorderPhotos(orderedPhotos);
+      // Don't call onReorder - local state is already correct
+    } catch (error) {
+      console.error("Failed to reorder photos:", error);
+      isReorderingRef.current = false;
+      setLocalPhotos(photos); // Revert on error
+    } finally {
+      setIsSaving(false);
+      setDraggedId(null);
+      setDragOverId(null);
+      // Allow sync after a longer delay to prevent immediate overwrite from parent refresh
+      setTimeout(() => {
+        isReorderingRef.current = false;
+      }, 500);
+    }
+  }
+
+  function handleDragEnd(): void {
+    setDraggedId(null);
+    setDragOverId(null);
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -137,56 +246,109 @@ function PhotoGridContent({
     );
   }
 
-  if (photos.length === 0) {
+  if (localPhotos.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <ImageIcon className="w-12 h-12 mx-auto mb-4 opacity-50" />
-        <p>{totalPhotos === 0 ? "No photos uploaded yet" : "No photos found"}</p>
+        <p>
+          {totalPhotos === 0 ? "No photos uploaded yet" : "No photos found"}
+        </p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {photos.map((photo) => (
-        <PhotoCard
-          key={photo.id}
-          photo={photo}
-          isDeleting={deletingPhotoId === photo.id}
-          onEdit={() => onEdit(photo)}
-          onDelete={() => onDelete(photo.id)}
-        />
-      ))}
-    </div>
+    <>
+      {isSaving && (
+        <div className="mb-4 p-2 bg-accent/10 rounded-lg text-center text-sm text-accent">
+          Saving new order...
+        </div>
+      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        {localPhotos.map((photo) => (
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            isDeleting={deletingPhotoId === photo.id}
+            isDragging={draggedId === photo.id}
+            isDragOver={dragOverId === photo.id}
+            isDragEnabled={isDragEnabled}
+            onEdit={() => onEdit(photo)}
+            onDelete={() => onDelete(photo.id)}
+            onDragStart={(e) => handleDragStart(e, photo.id)}
+            onDragOver={(e) => handleDragOver(e, photo.id)}
+            onDragLeave={handleDragLeave}
+            onDrop={(e) => handleDrop(e, photo.id)}
+            onDragEnd={handleDragEnd}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 
 interface PhotoCardProps {
   photo: Photo;
   isDeleting: boolean;
+  isDragging: boolean;
+  isDragOver: boolean;
+  isDragEnabled: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  onDragStart: (e: React.DragEvent) => void;
+  onDragOver: (e: React.DragEvent) => void;
+  onDragLeave: () => void;
+  onDrop: (e: React.DragEvent) => void;
+  onDragEnd: () => void;
 }
 
 function PhotoCard({
   photo,
   isDeleting,
+  isDragging,
+  isDragOver,
+  isDragEnabled,
   onEdit,
   onDelete,
+  onDragStart,
+  onDragOver,
+  onDragLeave,
+  onDrop,
+  onDragEnd,
 }: PhotoCardProps): React.ReactElement {
   return (
-    <div className="group relative bg-background/50 rounded-lg overflow-hidden border border-border/50 hover:border-accent/50 transition-colors">
+    <div
+      draggable={isDragEnabled}
+      onDragStart={onDragStart}
+      onDragOver={onDragOver}
+      onDragLeave={onDragLeave}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      className={cn(
+        "group relative bg-background/50 rounded-lg overflow-hidden border transition-all",
+        isDragging && "opacity-50 scale-95",
+        isDragOver && "border-accent border-2 scale-105",
+        !isDragging && !isDragOver && "border-border/50 hover:border-accent/50"
+      )}
+    >
+      {isDragEnabled && (
+        <div className="absolute top-2 left-2 z-10 p-1 rounded bg-black/50 text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing">
+          <GripVertical className="w-4 h-4" />
+        </div>
+      )}
       <div className="aspect-square overflow-hidden">
         <img
           src={getPhotoUrl(photo.filename, "thumb")}
           alt={photo.alt || photo.title}
           className="w-full h-full object-cover transition-transform group-hover:scale-105"
+          draggable={false}
         />
       </div>
       <div className="p-3">
         <h4 className="font-medium text-sm truncate">{photo.title}</h4>
         <p className="text-xs text-muted-foreground truncate">
-          {photo.category} {photo.location && `• ${photo.location}`}
+          {photo.categories?.map((c) => c.name).join(", ") || "No category"}{" "}
+          {photo.location && `• ${photo.location}`}
         </p>
       </div>
       <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
@@ -233,7 +395,33 @@ function EditPhotoModal({
   onSave,
   onCancel,
 }: EditPhotoModalProps): React.ReactElement {
-  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  // Get all selected categories
+  const selectedCategories = categories.filter((c) =>
+    form.categoryIds.includes(c.id)
+  );
+
+  // Get all available subcategories from selected categories
+  const availableSubcategories = selectedCategories.flatMap((cat) =>
+    cat.subcategories.map((sub) => ({ ...sub, categoryName: cat.name }))
+  );
+
+  function toggleCategory(id: number): void {
+    const isSelected = form.categoryIds.includes(id);
+    const categoryIds = isSelected
+      ? form.categoryIds.filter((cid) => cid !== id)
+      : [...form.categoryIds, id];
+
+    // Filter out subcategories that no longer belong to selected categories
+    const selectedCats = categories.filter((c) => categoryIds.includes(c.id));
+    const validSubcategoryIds = selectedCats.flatMap((cat) =>
+      cat.subcategories.map((s) => s.id)
+    );
+    const subcategoryIds = form.subcategoryIds.filter((sid) =>
+      validSubcategoryIds.includes(sid)
+    );
+
+    onFormChange({ ...form, categoryIds, subcategoryIds });
+  }
 
   function toggleSubcategory(id: number): void {
     const isSelected = form.subcategoryIds.includes(id);
@@ -273,70 +461,62 @@ function EditPhotoModal({
             </div>
 
             {/* Title */}
-            <FormField id="edit-title" label="Title" required>
+            <FormField id="edit-title" label="Description" required>
               <Input
                 id="edit-title"
                 value={form.title}
-                onChange={(e) => onFormChange({ ...form, title: e.target.value })}
+                onChange={(e) =>
+                  onFormChange({ ...form, title: e.target.value })
+                }
                 className="bg-background/50"
                 placeholder="Enter photo title"
-              />
-            </FormField>
-
-            {/* Alt Text */}
-            <FormField id="edit-alt" label="Alt Text" required>
-              <Input
-                id="edit-alt"
-                value={form.alt}
-                onChange={(e) => onFormChange({ ...form, alt: e.target.value })}
-                className="bg-background/50"
-                placeholder="Describe the image for accessibility"
               />
             </FormField>
 
             {/* Category */}
             <FormField
               id="edit-category"
-              label="Category"
+              label="Categories"
               required
               icon={<Tag className="w-4 h-4 text-muted-foreground" />}
             >
-              <select
-                id="edit-category"
-                value={form.categoryId || ""}
-                onChange={(e) => {
-                  const categoryId = e.target.value ? Number(e.target.value) : null;
-                  onFormChange({ ...form, categoryId, subcategoryIds: [] });
-                }}
-                className={cn(
-                  "w-full h-10 px-3 rounded-md border bg-background/50",
-                  "text-sm text-foreground cursor-pointer",
-                  "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
-                  "border-input"
-                )}
-              >
-                <option value="">Select a category...</option>
+              <div className="flex flex-wrap gap-2">
                 {categories.map((category) => (
-                  <option key={category.id} value={category.id}>
+                  <button
+                    key={category.id}
+                    type="button"
+                    onClick={() => toggleCategory(category.id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-sm font-medium",
+                      "transition-all duration-200 cursor-pointer border",
+                      form.categoryIds.includes(category.id)
+                        ? "bg-accent text-accent-foreground border-accent"
+                        : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+                    )}
+                  >
                     {category.name}
-                  </option>
+                  </button>
                 ))}
-              </select>
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Click to select/deselect categories (at least one required)
+              </p>
             </FormField>
 
             {/* Subcategories */}
-            {selectedCategory && (
+            {availableSubcategories.length > 0 && (
               <div className="space-y-2">
                 <label className="text-sm font-medium flex items-center gap-2">
                   <Tag className="w-4 h-4 text-muted-foreground" />
                   Subcategories
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {selectedCategory.subcategories.map((sub) => (
+                  {availableSubcategories.map((sub) => (
                     <button
                       key={sub.id}
                       type="button"
                       onClick={() => toggleSubcategory(sub.id)}
+                      title={`Category: ${sub.categoryName}`}
                       className={cn(
                         "px-3 py-1.5 rounded-full text-sm font-medium",
                         "transition-all duration-200 cursor-pointer border",
@@ -349,30 +529,8 @@ function EditPhotoModal({
                     </button>
                   ))}
                 </div>
-                {selectedCategory.subcategories.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No subcategories available for this category
-                  </p>
-                )}
               </div>
             )}
-
-            {/* Location */}
-            <FormField
-              id="edit-location"
-              label="Location"
-              icon={<MapPin className="w-4 h-4 text-muted-foreground" />}
-            >
-              <Input
-                id="edit-location"
-                value={form.location}
-                onChange={(e) =>
-                  onFormChange({ ...form, location: e.target.value })
-                }
-                className="bg-background/50"
-                placeholder="e.g., Tokyo, Japan"
-              />
-            </FormField>
 
             {/* Date Taken */}
             <FormField
@@ -423,7 +581,7 @@ function EditPhotoModal({
               <Button
                 type="submit"
                 className="cursor-pointer"
-                disabled={!form.title || !form.alt || !form.categoryId}
+                disabled={!form.title || form.categoryIds.length === 0}
               >
                 <Save className="w-4 h-4 mr-2" />
                 Save Changes

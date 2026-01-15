@@ -47,7 +47,9 @@ export function AlbumUpload({
   onFormChange,
   onSubmit,
 }: AlbumUploadProps): React.ReactElement {
-  const selectedCategory = categories.find((c) => c.id === form.categoryId);
+  const selectedCategories = categories.filter((c) =>
+    form.categoryIds.includes(c.id)
+  );
 
   return (
     <Card className="bg-card/50 backdrop-blur-sm border-border/50 mb-6">
@@ -80,8 +82,8 @@ export function AlbumUpload({
           <CategorySection
             form={form}
             categories={categories}
-            selectedCategory={selectedCategory}
-            error={errors.categoryId}
+            selectedCategories={selectedCategories}
+            error={errors.categoryIds}
             onFormChange={onFormChange}
           />
 
@@ -89,9 +91,7 @@ export function AlbumUpload({
 
           {progress.uploading && <ProgressBar progress={progress} />}
 
-          {progress.errors.length > 0 && (
-            <ErrorList errors={progress.errors} />
-          )}
+          {progress.errors.length > 0 && <ErrorList errors={progress.errors} />}
 
           <div className="flex justify-end gap-3 pt-4">
             <Button
@@ -112,7 +112,9 @@ export function AlbumUpload({
               <Upload className="w-4 h-4 mr-2" />
               {progress.uploading
                 ? "Uploading..."
-                : `Upload ${files.length} Photo${files.length !== 1 ? "s" : ""}`}
+                : `Upload ${files.length} Photo${
+                    files.length !== 1 ? "s" : ""
+                  }`}
             </Button>
           </div>
         </form>
@@ -127,7 +129,11 @@ interface DropZoneProps {
   onFilesChange: (files: FileList | null) => void;
 }
 
-function DropZone({ files, hasError, onFilesChange }: DropZoneProps): React.ReactElement {
+function DropZone({
+  files,
+  hasError,
+  onFilesChange,
+}: DropZoneProps): React.ReactElement {
   function handleDragOver(e: React.DragEvent): void {
     e.preventDefault();
     e.currentTarget.classList.add("border-accent", "bg-accent/10");
@@ -200,10 +206,16 @@ interface PreviewGridProps {
   onRemove: (index: number) => void;
 }
 
-function PreviewGrid({ previews, files, onRemove }: PreviewGridProps): React.ReactElement {
+function PreviewGrid({
+  previews,
+  files,
+  onRemove,
+}: PreviewGridProps): React.ReactElement {
   return (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-foreground">Selected Images</label>
+      <label className="text-sm font-medium text-foreground">
+        Selected Images
+      </label>
       <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2">
         {previews.map((preview, index) => (
           <div
@@ -238,7 +250,7 @@ function PreviewGrid({ previews, files, onRemove }: PreviewGridProps): React.Rea
 interface CategorySectionProps {
   form: AlbumFormData;
   categories: Category[];
-  selectedCategory: Category | undefined;
+  selectedCategories: Category[];
   error: string | undefined;
   onFormChange: (form: AlbumFormData) => void;
 }
@@ -246,49 +258,71 @@ interface CategorySectionProps {
 function CategorySection({
   form,
   categories,
-  selectedCategory,
+  selectedCategories,
   error,
   onFormChange,
 }: CategorySectionProps): React.ReactElement {
+  // Get all available subcategories from selected categories
+  const availableSubcategories = selectedCategories.flatMap((cat) =>
+    cat.subcategories.map((sub) => ({ ...sub, categoryName: cat.name }))
+  );
+
+  function toggleCategory(id: number): void {
+    const isSelected = form.categoryIds.includes(id);
+    const categoryIds = isSelected
+      ? form.categoryIds.filter((cid) => cid !== id)
+      : [...form.categoryIds, id];
+
+    // Filter out subcategories that no longer belong to selected categories
+    const selectedCats = categories.filter((c) => categoryIds.includes(c.id));
+    const validSubcategoryIds = selectedCats.flatMap((cat) =>
+      cat.subcategories.map((s) => s.id)
+    );
+    const subcategoryIds = form.subcategoryIds.filter((sid) =>
+      validSubcategoryIds.includes(sid)
+    );
+
+    onFormChange({ ...form, categoryIds, subcategoryIds });
+  }
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label
-          htmlFor="album-category"
-          className="text-sm font-medium text-foreground flex items-center gap-2"
-        >
+        <label className="text-sm font-medium text-foreground flex items-center gap-2">
           <Tag className="w-4 h-4 text-muted-foreground" />
-          Category <span className="text-red-500">*</span>
+          Categories <span className="text-red-500">*</span>
         </label>
-        <select
-          id="album-category"
-          value={form.categoryId || ""}
-          onChange={(e) => {
-            const categoryId = e.target.value ? Number(e.target.value) : null;
-            onFormChange({ ...form, categoryId, subcategoryIds: [] });
-          }}
-          className={cn(
-            "w-full h-10 px-3 rounded-md border bg-background/50",
-            "text-sm text-foreground",
-            "focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background",
-            error ? "border-red-500 focus:ring-red-500" : "border-input"
-          )}
-        >
-          <option value="">Select a category...</option>
+        <div className="flex flex-wrap gap-2">
           {categories.map((category) => (
-            <option key={category.id} value={category.id}>
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => toggleCategory(category.id)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-medium",
+                "transition-all duration-200 cursor-pointer border",
+                form.categoryIds.includes(category.id)
+                  ? "bg-accent text-accent-foreground border-accent"
+                  : "bg-background/50 text-muted-foreground border-border hover:border-accent/50 hover:text-foreground"
+              )}
+            >
               {category.name}
-            </option>
+            </button>
           ))}
-        </select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Click to select/deselect categories (at least one required)
+        </p>
         {error && <ErrorText message={error} />}
       </div>
 
-      {selectedCategory && (
+      {availableSubcategories.length > 0 && (
         <SubcategorySelector
-          subcategories={selectedCategory.subcategories}
+          subcategories={availableSubcategories}
           selectedIds={form.subcategoryIds}
-          onChange={(subcategoryIds) => onFormChange({ ...form, subcategoryIds })}
+          onChange={(subcategoryIds) =>
+            onFormChange({ ...form, subcategoryIds })
+          }
         />
       )}
     </div>
@@ -296,7 +330,7 @@ function CategorySection({
 }
 
 interface SubcategorySelectorProps {
-  subcategories: Array<{ id: number; name: string }>;
+  subcategories: Array<{ id: number; name: string; categoryName?: string }>;
   selectedIds: number[];
   onChange: (ids: number[]) => void;
 }
@@ -308,9 +342,10 @@ function SubcategorySelector({
 }: SubcategorySelectorProps): React.ReactElement {
   function toggleSubcategory(id: number): void {
     const isSelected = selectedIds.includes(id);
-    onChange(
-      isSelected ? selectedIds.filter((sid) => sid !== id) : [...selectedIds, id]
-    );
+    const updatedIds = isSelected
+      ? selectedIds.filter((sid) => sid !== id)
+      : [...selectedIds, id];
+    onChange(updatedIds);
   }
 
   return (
@@ -325,6 +360,9 @@ function SubcategorySelector({
             key={sub.id}
             type="button"
             onClick={() => toggleSubcategory(sub.id)}
+            title={
+              sub.categoryName ? `Category: ${sub.categoryName}` : undefined
+            }
             className={cn(
               "px-3 py-1.5 rounded-full text-sm font-medium",
               "transition-all duration-200 cursor-pointer border",

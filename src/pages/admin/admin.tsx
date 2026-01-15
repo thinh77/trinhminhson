@@ -61,7 +61,7 @@ export function AdminPage() {
   const [photoForm, setPhotoForm] = useState<PhotoFormData>({
     title: "",
     file: null,
-    categoryId: null,
+    categoryIds: [],
     subcategoryIds: [],
     date: new Date().toISOString().split("T")[0],
   });
@@ -77,14 +77,14 @@ export function AdminPage() {
     title: string;
     alt: string;
     location: string;
-    categoryId: number | null;
+    categoryIds: number[];
     subcategoryIds: number[];
     dateTaken: string;
   }>({
     title: "",
     alt: "",
     location: "",
-    categoryId: null,
+    categoryIds: [],
     subcategoryIds: [],
     dateTaken: "",
   });
@@ -163,9 +163,8 @@ export function AdminPage() {
 
   // Handle edit photo
   const handleEditPhoto = (photo: Photo) => {
-    // Find category ID from category name
-    const category = categoriesData.find((c) => c.name === photo.category);
-    const categoryId = category?.id || null;
+    // Get category IDs from photo's categories
+    const categoryIds = photo.categories?.map((cat) => cat.id) || [];
 
     // Get subcategory IDs from photo's subcategories
     const subcategoryIds = photo.subcategories?.map((sub) => sub.id) || [];
@@ -174,7 +173,7 @@ export function AdminPage() {
       title: photo.title || "",
       alt: photo.alt || "",
       location: photo.location || "",
-      categoryId,
+      categoryIds,
       subcategoryIds,
       dateTaken: photo.date_taken ? photo.date_taken.split("T")[0] : "",
     });
@@ -184,16 +183,14 @@ export function AdminPage() {
   // Handle save edited photo
   const handleSavePhoto = async (photoId: number) => {
     try {
-      // Find category name from categoryId
-      const category = categoriesData.find(
-        (c) => c.id === editPhotoForm.categoryId
-      );
-
       const updatedPhoto = await updatePhoto(photoId, {
         title: editPhotoForm.title,
         alt: editPhotoForm.alt,
         location: editPhotoForm.location || undefined,
-        category: category?.name,
+        categoryIds:
+          editPhotoForm.categoryIds.length > 0
+            ? editPhotoForm.categoryIds
+            : undefined,
         subcategoryIds:
           editPhotoForm.subcategoryIds.length > 0
             ? editPhotoForm.subcategoryIds
@@ -259,8 +256,8 @@ export function AdminPage() {
         errors.file = "Image size must be less than 15MB";
       }
     }
-    if (!photoForm.categoryId) {
-      errors.categoryId = "Category is required";
+    if (!photoForm.categoryIds || photoForm.categoryIds.length === 0) {
+      errors.categoryIds = "At least one category is required";
     }
 
     setPhotoErrors(errors);
@@ -358,11 +355,11 @@ export function AdminPage() {
       return;
     }
 
-    const selectedCategory = categoriesData.find(
-      (c) => c.id === photoForm.categoryId
-    );
-    if (!selectedCategory) {
-      setToast({ message: "Please select a valid category", type: "error" });
+    if (!photoForm.categoryIds || photoForm.categoryIds.length === 0) {
+      setToast({
+        message: "Please select at least one category",
+        type: "error",
+      });
       return;
     }
 
@@ -370,7 +367,7 @@ export function AdminPage() {
     try {
       await uploadPhoto(photoForm.file, {
         title: photoForm.title,
-        category: selectedCategory.name,
+        categoryIds: photoForm.categoryIds,
         subcategoryIds:
           photoForm.subcategoryIds.length > 0
             ? photoForm.subcategoryIds
@@ -382,7 +379,7 @@ export function AdminPage() {
       setPhotoForm({
         title: "",
         file: null,
-        categoryId: null,
+        categoryIds: [],
         subcategoryIds: [],
         date: new Date().toISOString().split("T")[0],
       });
@@ -599,7 +596,7 @@ export function AdminPage() {
                     setPhotoForm({
                       title: "",
                       file: null,
-                      categoryId: null,
+                      categoryIds: [],
                       subcategoryIds: [],
                       date: new Date().toISOString().split("T")[0],
                     });
@@ -622,6 +619,7 @@ export function AdminPage() {
                   onSave={handleSavePhoto}
                   onCancelEdit={handleCancelEditPhoto}
                   onEditFormChange={setEditPhotoForm}
+                  onPhotosReordered={loadPhotos}
                 />
               </>
             )}

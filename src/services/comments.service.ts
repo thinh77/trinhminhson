@@ -10,6 +10,7 @@ export interface Comment {
         username: string;
     };
     content: string;
+    imageUrl?: string;
     isAnonymous: boolean;
     isGuest: boolean;
     createdAt: string;
@@ -20,6 +21,7 @@ export interface CreateCommentData {
     content: string;
     guestName?: string;
     isAnonymous?: boolean;
+    image?: File;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -49,20 +51,30 @@ export async function addComment(
     photoId: number,
     data: CreateCommentData
 ): Promise<Comment> {
-    const headers: HeadersInit = {
-        "Content-Type": "application/json",
-        ...getAuthHeaders(),
-    };
+    const formData = new FormData();
+    formData.append("content", data.content);
+
+    if (data.guestName) {
+        formData.append("guestName", data.guestName);
+    }
+
+    if (data.isAnonymous !== undefined) {
+        formData.append("isAnonymous", String(data.isAnonymous));
+    }
+
+    if (data.image) {
+        formData.append("image", data.image);
+    }
 
     const response = await fetch(`${API_BASE_URL}/photos/${photoId}/comments`, {
         method: "POST",
-        headers,
-        body: JSON.stringify(data),
+        headers: getAuthHeaders(),
+        body: formData,
     });
 
     if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || "Failed to post comment");
+        throw new Error(error.message || error.error || "Failed to post comment");
     }
 
     return response.json();

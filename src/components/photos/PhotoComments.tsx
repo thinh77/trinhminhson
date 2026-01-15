@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   getCommentsByPhoto,
@@ -7,7 +7,14 @@ import {
   type Comment,
 } from "@/services/comments.service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Trash2, Shield, Loader2, Send, MessageCircle } from "lucide-react";
+import {
+  Shield,
+  Loader2,
+  Send,
+  MessageCircle,
+  Image as ImageIcon,
+  X as XIcon,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STATIC_BASE_URL } from "@/services/api";
 
@@ -15,7 +22,6 @@ interface PhotoCommentsProps {
   photoId: number;
 }
 
-// Format relative time
 function formatRelativeTime(date: Date): string {
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
@@ -40,10 +46,46 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const [guestName, setGuestName] = useState("Guest");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [showGuestInput, setShowGuestInput] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadComments();
   }, [photoId]);
+
+  function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>): void {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE = 15 * 1024 * 1024;
+    const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setError("Only JPG and PNG images are allowed");
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      setError("Image size must be less than 15MB");
+      return;
+    }
+
+    setSelectedImage(file);
+    setImagePreview(URL.createObjectURL(file));
+    setError(null);
+  }
+
+  function handleRemoveImage(): void {
+    if (imagePreview) {
+      URL.revokeObjectURL(imagePreview);
+    }
+    setSelectedImage(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
 
   const loadComments = async () => {
     try {
@@ -61,7 +103,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!content.trim()) return;
+    if (!content.trim() && !selectedImage) return;
 
     try {
       setIsSubmitting(true);
@@ -71,10 +113,12 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
         content,
         guestName: !user ? guestName : undefined,
         isAnonymous: user ? isAnonymous : undefined,
+        image: selectedImage || undefined,
       });
 
       setComments([newComment, ...comments]);
       setContent("");
+      handleRemoveImage();
       if (!user) {
         setGuestName("Guest");
         setShowGuestInput(false);
@@ -116,7 +160,9 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
               <MessageCircle className="w-5 h-5 text-gray-400" />
             </div>
             <p className="text-gray-500 text-sm">No comments yet.</p>
-            <p className="text-gray-400 text-xs mt-1">Start the conversation.</p>
+            <p className="text-gray-400 text-xs mt-1">
+              Start the conversation.
+            </p>
           </div>
         ) : (
           comments.map((comment) => (
@@ -155,11 +201,27 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                   {comment.content}
                 </p>
 
+                {comment.imageUrl && (
+                  <div className="mt-2">
+                    <img
+                      src={`${STATIC_BASE_URL}${comment.imageUrl}`}
+                      alt="Comment attachment"
+                      className="max-w-full rounded-lg border border-gray-200 max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() =>
+                        window.open(
+                          `${STATIC_BASE_URL}${comment.imageUrl}`,
+                          "_blank"
+                        )
+                      }
+                    />
+                  </div>
+                )}
+
                 <div className="flex items-center gap-3 mt-1.5">
-                  <button className="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
+                  {/* <button className="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
                     Reply
-                  </button>
-                  
+                  </button> */}
+
                   {(isAdmin ||
                     (user &&
                       !comment.isGuest &&
@@ -181,6 +243,12 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
       {/* Input Area */}
       <div className="p-4 border-t border-gray-100 bg-white">
+        {error && (
+          <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
+            {error}
+          </div>
+        )}
+
         {!user && showGuestInput && (
           <div className="mb-2 animate-in fade-in slide-in-from-bottom-2">
             <input
@@ -193,48 +261,92 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
           </div>
         )}
 
+        {imagePreview && (
+          <div className="mb-2 relative inline-block">
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="max-h-32 rounded-lg border border-gray-200"
+            />
+            <button
+              type="button"
+              onClick={handleRemoveImage}
+              className="absolute -top-2 -right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors cursor-pointer"
+            >
+              <XIcon className="w-3 h-3" />
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="relative">
           <input
             type="text"
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onFocus={() => !user && setShowGuestInput(true)}
-            placeholder={user ? "Add a comment..." : "Add a comment as guest..."}
-            className="w-full pl-4 pr-12 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-400"
+            placeholder={
+              user ? "Add a comment..." : "Add a comment as guest..."
+            }
+            className="w-full pl-4 pr-24 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:outline-none focus:ring-1 focus:ring-blue-500/50 transition-all placeholder:text-gray-400"
           />
-          
-          <button
-            type="submit"
-            disabled={isSubmitting || !content.trim() || (!user && !guestName.trim())}
-            className={cn(
-              "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full transition-colors cursor-pointer",
-              content.trim() 
-                ? "text-blue-600 hover:bg-blue-50" 
-                : "text-gray-300 cursor-not-allowed"
+
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+            {user && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/jpg,image/png"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  id="comment-image-upload"
+                />
+                <label
+                  htmlFor="comment-image-upload"
+                  className="p-2 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+                >
+                  <ImageIcon className="w-4 h-4 text-gray-500" />
+                </label>
+              </>
             )}
-          >
-            {isSubmitting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+
+            <button
+              type="submit"
+              disabled={
+                isSubmitting ||
+                (!content.trim() && !selectedImage) ||
+                (!user && !guestName.trim())
+              }
+              className={cn(
+                "p-2 rounded-full transition-colors cursor-pointer",
+                content.trim() || selectedImage
+                  ? "text-blue-600 hover:bg-blue-50"
+                  : "text-gray-300 cursor-not-allowed"
+              )}
+            >
+              {isSubmitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </form>
-        
+
         {user && (
-           <div className="flex items-center gap-2 mt-2">
-             <label className="flex items-center gap-2 cursor-pointer group">
-               <input
-                 type="checkbox"
-                 checked={isAnonymous}
-                 onChange={(e) => setIsAnonymous(e.target.checked)}
-                 className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-               />
-               <span className="text-xs text-gray-500 group-hover:text-gray-700 select-none">
-                 Post anonymously
-               </span>
-             </label>
-           </div>
+          <div className="flex items-center gap-2 mt-2">
+            <label className="flex items-center gap-2 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={isAnonymous}
+                onChange={(e) => setIsAnonymous(e.target.checked)}
+                className="w-3.5 h-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-xs text-gray-500 group-hover:text-gray-700 select-none">
+                Post anonymously
+              </span>
+            </label>
+          </div>
         )}
       </div>
     </div>

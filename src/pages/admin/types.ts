@@ -5,13 +5,13 @@ export type AdminBlogFormData = BlogFormData;
 export interface PhotoFormData {
   title: string;
   file: File | null;
-  categoryId: number | null;
+  categoryIds: number[];
   subcategoryIds: number[];
   date: string;
 }
 
 export interface AlbumFormData {
-  categoryId: number | null;
+  categoryIds: number[];
   subcategoryIds: number[];
   location: string;
   date: string;
@@ -28,7 +28,7 @@ export interface EditPhotoFormData {
   title: string;
   alt: string;
   location: string;
-  categoryId: number | null;
+  categoryIds: number[];
   subcategoryIds: number[];
   dateTaken: string;
 }

@@ -29,16 +29,21 @@ export function usePhotoFilters(photos: Photo[]): UsePhotoFiltersReturn {
     return photos.filter((p) => {
       if (activeCategories.size === 0) return true;
 
-      const categoryMatch = activeCategories.has(p.category);
+      // Check if photo has any of the selected categories
+      const categoryMatch = p.categories.some((cat) => activeCategories.has(cat));
       if (!categoryMatch) return false;
 
       if (activeSubcategories.size > 0) {
-        const hasMatchingSubcategory = p.subcategories.some((sub) =>
-          activeSubcategories.has(`${p.category}:${sub}`)
+        // Check if photo has matching subcategories
+        const hasMatchingSubcategory = p.categories.some((cat) =>
+          p.subcategories.some((sub) => activeSubcategories.has(`${cat}:${sub}`))
         );
-        const categoryHasSelectedSubs = Array.from(activeSubcategories).some(
-          (sub) => sub.startsWith(`${p.category}:`)
+        
+        // Check if any of photo's categories have selected subcategories
+        const categoryHasSelectedSubs = p.categories.some((cat) =>
+          Array.from(activeSubcategories).some((sub) => sub.startsWith(`${cat}:`))
         );
+        
         if (categoryHasSelectedSubs) {
           return hasMatchingSubcategory;
         }
@@ -130,7 +135,7 @@ export function usePhotoFilters(photos: Photo[]): UsePhotoFiltersReturn {
     (categoryName: string, subcategoryName: string) => {
       return photos.filter(
         (p) =>
-          p.category === categoryName && p.subcategories.includes(subcategoryName)
+          p.categories.includes(categoryName) && p.subcategories.includes(subcategoryName)
       ).length;
     },
     [photos]

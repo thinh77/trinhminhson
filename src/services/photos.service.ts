@@ -17,6 +17,12 @@ function getAuthHeaders(): HeadersInit {
 }
 
 // Types
+export interface PhotoCategory {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 export interface PhotoSubcategory {
   id: number;
   name: string;
@@ -30,7 +36,7 @@ export interface Photo {
   original_name: string;
   alt: string;
   location?: string;
-  category: string;
+  categories?: PhotoCategory[];
   subcategories?: PhotoSubcategory[];
   date_taken?: string;
   aspect_ratio: "landscape" | "portrait" | "square";
@@ -47,7 +53,7 @@ export interface Photo {
 
 export interface UploadPhotoData {
   title: string;
-  category: string;
+  categoryIds?: number[];
   subcategoryIds?: number[];
   dateTaken?: string;
   isPublic?: boolean;
@@ -57,7 +63,7 @@ export interface UpdatePhotoData {
   title?: string;
   alt?: string;
   location?: string;
-  category?: string;
+  categoryIds?: number[];
   subcategoryIds?: number[];
   dateTaken?: string;
   isPublic?: boolean;
@@ -68,27 +74,29 @@ export interface UpdatePhotoData {
  * Get photo URL from filename
  * @param filename - Original filename
  * @param size - Size variant: 'thumb' (400px), 'medium' (800px), 'large' (1600px), 'original'
+ * All display sizes use WebP format, 'original' returns the uploaded file for download
  */
 export function getPhotoUrl(filename: string, size: 'thumb' | 'medium' | 'large' | 'original' = 'original'): string {
+  // Original file for download
   if (size === 'original') {
     return `${STATIC_BASE_URL}/uploads/photos/${filename}`;
   }
 
-  // Get base name without extension and add size suffix
+  // All display sizes use WebP format
   const baseName = filename.replace(/\.[^/.]+$/, '');
-  return `${STATIC_BASE_URL}/uploads/photos/${baseName}_${size}.jpg`;
+  return `${STATIC_BASE_URL}/uploads/photos/${baseName}_${size}.webp`;
 }
 
 /**
  * Get all photos
  */
 export async function getPhotos(params?: {
-  category?: string;
+  categoryId?: number;
   limit?: number;
   offset?: number;
 }): Promise<Photo[]> {
   const queryParams = new URLSearchParams();
-  if (params?.category) queryParams.set("category", params.category);
+  if (params?.categoryId) queryParams.set("categoryId", params.categoryId.toString());
   if (params?.limit) queryParams.set("limit", params.limit.toString());
   if (params?.offset) queryParams.set("offset", params.offset.toString());
 
@@ -106,13 +114,6 @@ export async function getPhotoById(id: number): Promise<Photo> {
 }
 
 /**
- * Get all categories
- */
-export async function getCategories(): Promise<string[]> {
-  return api.get<string[]>("/photos/categories");
-}
-
-/**
  * Upload a new photo
  */
 export async function uploadPhoto(
@@ -122,7 +123,9 @@ export async function uploadPhoto(
   const formData = new FormData();
   formData.append("file", file);
   formData.append("title", data.title);
-  formData.append("category", data.category);
+  if (data.categoryIds && data.categoryIds.length > 0) {
+    formData.append("categoryIds", JSON.stringify(data.categoryIds));
+  }
   if (data.subcategoryIds && data.subcategoryIds.length > 0) {
     formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
   }
@@ -164,7 +167,7 @@ export async function deletePhoto(id: number): Promise<{ message: string }> {
  * Bulk upload data for album upload
  */
 export interface BulkUploadData {
-  category: string;
+  categoryIds?: number[];
   subcategoryIds?: number[];
   location?: string;
   dateTaken?: string;
@@ -195,7 +198,9 @@ export async function uploadMultiplePhotos(
     formData.append("files", file);
   });
 
-  formData.append("category", data.category);
+  if (data.categoryIds && data.categoryIds.length > 0) {
+    formData.append("categoryIds", JSON.stringify(data.categoryIds));
+  }
   if (data.subcategoryIds && data.subcategoryIds.length > 0) {
     formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
   }
@@ -215,4 +220,13 @@ export async function uploadMultiplePhotos(
   }
 
   return response.json();
+}
+
+/**
+ * Reorder photos by updating their display order
+ */
+export async function reorderPhotos(
+  orderedPhotos: Array<{ id: number; displayOrder: number }>
+): Promise<{ message: string }> {
+  return api.patch("/photos/reorder", { orderedPhotos });
 }

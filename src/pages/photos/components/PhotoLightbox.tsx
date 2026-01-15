@@ -106,23 +106,40 @@ export function PhotoLightbox({
             <h2 className="text-base font-semibold leading-tight text-gray-900 mb-2">
               {photo.title}
             </h2>
-            {photo.category && (
+            {photo.categories && photo.categories.length > 0 && (
               <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs font-medium">
-                <button
-                  onClick={() => handleCategoryClick(photo.category)}
-                  className="text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
-                >
-                  #{photo.category}
-                </button>
-                {photo.subcategories?.map((sub) => (
+                {photo.categories.map((cat) => (
                   <button
-                    key={sub}
-                    onClick={() => handleSubcategoryClick(photo.category, sub)}
+                    key={cat}
+                    onClick={() => handleCategoryClick(cat)}
                     className="text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
                   >
-                    #{sub}
+                    #{cat}
                   </button>
                 ))}
+                {photo.subcategories?.map((sub) => {
+                  // Find which category this subcategory belongs to
+                  const parentCategory =
+                    photo.categories.find((cat) => {
+                      const categoryData = categoriesData.find(
+                        (c) => c.name === cat
+                      );
+                      return categoryData?.subcategories.some(
+                        (s) => s.name === sub
+                      );
+                    }) || photo.categories[0];
+                  return (
+                    <button
+                      key={sub}
+                      onClick={() =>
+                        handleSubcategoryClick(parentCategory, sub)
+                      }
+                      className="text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
+                    >
+                      #{sub}
+                    </button>
+                  );
+                })}
               </div>
             )}
 

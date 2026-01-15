@@ -1,5 +1,6 @@
+import { useRef, useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Calendar, ZoomIn } from "lucide-react";
+import { Calendar, ZoomIn, Loader2 } from "lucide-react";
 import type { Photo } from "../types";
 
 interface PhotoGridProps {
@@ -8,6 +9,9 @@ interface PhotoGridProps {
   loadedImages: Set<string>;
   onImageLoad: (id: string) => void;
   onPhotoSelect: (photo: Photo) => void;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onLoadMore?: () => void;
 }
 
 export function PhotoGrid({
@@ -16,26 +20,61 @@ export function PhotoGrid({
   loadedImages,
   onImageLoad,
   onPhotoSelect,
+  hasMore = false,
+  isLoadingMore = false,
+  onLoadMore,
 }: PhotoGridProps): React.ReactElement {
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!hasMore || !onLoadMore) return;
+
+    const element = loadMoreRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !isLoadingMore) {
+          onLoadMore();
+        }
+      },
+      { rootMargin: "400px" }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, [hasMore, isLoadingMore, onLoadMore]);
+
   return (
-    <div
-      className={cn(
-        "columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4",
-        "transition-all duration-700 delay-150 ease-out",
-        isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+    <>
+      <div
+        className={cn(
+          "columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4",
+          "transition-all duration-700 delay-150 ease-out",
+          isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        )}
+      >
+        {photos.map((photo, index) => (
+          <PhotoCard
+            key={photo.id}
+            photo={photo}
+            index={index}
+            isLoaded={loadedImages.has(photo.id)}
+            onImageLoad={() => onImageLoad(photo.id)}
+            onSelect={() => onPhotoSelect(photo)}
+          />
+        ))}
+      </div>
+
+      {hasMore && (
+        <div ref={loadMoreRef} className="flex justify-center py-8">
+          {isLoadingMore && (
+            <Loader2 className="w-6 h-6 animate-spin text-accent" />
+          )}
+        </div>
       )}
-    >
-      {photos.map((photo, index) => (
-        <PhotoCard
-          key={photo.id}
-          photo={photo}
-          index={index}
-          isLoaded={loadedImages.has(photo.id)}
-          onImageLoad={() => onImageLoad(photo.id)}
-          onSelect={() => onPhotoSelect(photo)}
-        />
-      ))}
-    </div>
+    </>
   );
 }
 
@@ -54,6 +93,28 @@ function PhotoCard({
   onImageLoad,
   onSelect,
 }: PhotoCardProps): React.ReactElement {
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const element = cardRef.current;
+    if (!element) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(element);
+
+    return () => observer.disconnect();
+  }, []);
+
   function handleKeyDown(e: React.KeyboardEvent): void {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -70,6 +131,7 @@ function PhotoCard({
 
   return (
     <div
+      ref={cardRef}
       className={cn(
         "break-inside-avoid group relative",
         "rounded-xl overflow-hidden",
@@ -86,21 +148,30 @@ function PhotoCard({
       aria-label={`View ${photo.title}`}
     >
       {!isLoaded && (
-        <div className={cn("absolute inset-0 bg-secondary animate-pulse", aspectClass)} />
+        <div
+          className={cn(
+            "absolute inset-0 bg-secondary animate-pulse",
+            aspectClass
+          )}
+        />
       )}
 
-      <img
-        src={photo.src}
-        alt={photo.alt}
-        loading="lazy"
-        onLoad={onImageLoad}
-        className={cn(
-          "w-full h-auto object-cover",
-          "transition-all duration-500 ease-out",
-          "group-hover:scale-105",
-          isLoaded ? "opacity-100" : "opacity-0"
-        )}
-      />
+      {isVisible ? (
+        <img
+          src={photo.src}
+          alt={photo.alt}
+          loading="lazy"
+          onLoad={onImageLoad}
+          className={cn(
+            "w-full h-auto object-cover",
+            "transition-all duration-500 ease-out",
+            "group-hover:scale-105",
+            isLoaded ? "opacity-100" : "opacity-0"
+          )}
+        />
+      ) : (
+        <div className={cn("w-full bg-secondary/50", aspectClass)} />
+      )}
 
       <div
         className={cn(
@@ -111,7 +182,7 @@ function PhotoCard({
         )}
       >
         <p
-          className="text-white font-semibold text-lg"
+          className="text-white font-semibold text-lg line-clamp-1"
           style={{ fontFamily: "'Outfit', sans-serif" }}
         >
           {photo.title}
@@ -120,7 +191,7 @@ function PhotoCard({
         {photo.date && (
           <div className="flex items-center gap-1 mt-1 text-sm text-white/90">
             <Calendar className="w-4 h-4" />
-            <span>{new Date(photo.date).toLocaleDateString('vn-VN')}</span>
+            <span>{new Date(photo.date).toLocaleDateString("vn-VN")}</span>
           </div>
         )}
       </div>
