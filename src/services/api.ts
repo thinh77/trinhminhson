@@ -66,9 +66,20 @@ async function apiRequest<T>(
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
-      throw new Error(
+      // Create error object with all fields from backend
+      const error = new Error(
         errorData.message || `HTTP error! status: ${response.status}`
-      );
+      ) as Error & { code?: string; email?: string };
+      
+      // Preserve additional error fields (code, email, etc.)
+      if (errorData.code) {
+        error.code = errorData.code;
+      }
+      if (errorData.email) {
+        error.email = errorData.email;
+      }
+      
+      throw error;
     }
 
     return await response.json();

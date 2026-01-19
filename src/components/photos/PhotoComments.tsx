@@ -5,6 +5,7 @@ import {
   getCommentsByPhoto,
   addComment,
   deleteComment,
+  updateComment,
   type Comment,
 } from "@/services/comments.service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
@@ -22,6 +23,20 @@ import { STATIC_BASE_URL } from "@/services/api";
 
 interface PhotoCommentsProps {
   photoId: number;
+}
+
+const EDIT_WINDOW_MS = 5 * 60 * 1000;
+const DELETE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
+const COMMENT_TOKEN_KEY = "comment_tokens";
+
+function loadGuestTokens(): Record<number, string> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(COMMENT_TOKEN_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
 }
 
 function formatRelativeTime(date: Date): string {
@@ -42,6 +57,12 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [guestTokens, setGuestTokens] = useState<Record<number, string>>(() =>
+    loadGuestTokens()
+  );
+  const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+  const [editContent, setEditContent] = useState("");
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Form state
   const [content, setContent] = useState("");
@@ -56,6 +77,41 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   useEffect(() => {
     loadComments();
   }, [photoId]);
+
+  const persistGuestToken = (commentId: number, token: string) => {
+    setGuestTokens((prev) => {
+      const next = { ...prev, [commentId]: token };
+      try {
+        localStorage.setItem(COMMENT_TOKEN_KEY, JSON.stringify(next));
+      } catch {
+        // ignore storage failures to avoid blocking UI
+      }
+      return next;
+    });
+  };
+
+  const getGuestToken = (commentId: number) => guestTokens[commentId];
+
+  const canEditComment = (comment: Comment) => {
+    const withinWindow =
+      Date.now() - new Date(comment.createdAt).getTime() <= EDIT_WINDOW_MS;
+    if (!withinWindow) return false;
+
+    if (comment.isGuest) {
+      return Boolean(getGuestToken(comment.id));
+    }
+
+    return Boolean(comment.isOwner);
+  };
+
+  const canDeleteComment = (comment: Comment) => {
+    const isAdmin = user?.role === "admin";
+    if (isAdmin) return true;
+    if (!comment.isOwner) return false;
+    const withinWindow =
+      Date.now() - new Date(comment.createdAt).getTime() <= DELETE_WINDOW_MS;
+    return withinWindow;
+  };
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>): void {
     const file = e.target.files?.[0];
@@ -127,6 +183,10 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
         image: selectedImage || undefined,
       });
 
+      if (newComment.guestToken) {
+        persistGuestToken(newComment.id, newComment.guestToken);
+      }
+
       setComments([newComment, ...comments]);
       setContent("");
       handleRemoveImage();
@@ -155,6 +215,48 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     }
   };
 
+  const handleStartEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+    setError(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditContent("");
+  };
+
+  const handleUpdate = async (comment: Comment) => {
+    if (!editContent.trim()) {
+      setError("Comment content is required");
+      return;
+    }
+
+    if (comment.isGuest && !getGuestToken(comment.id)) {
+      setError("Missing guest token to edit this comment");
+      return;
+    }
+
+    try {
+      setIsUpdating(true);
+      const updated = await updateComment(photoId, comment.id, {
+        content: editContent.trim(),
+        guestToken: getGuestToken(comment.id),
+      });
+
+      setComments((prev) =>
+        prev.map((c) => (c.id === comment.id ? { ...c, ...updated } : c))
+      );
+      setError(null);
+      handleCancelEdit();
+    } catch (err: any) {
+      console.error("Failed to update comment:", err);
+      setError(err.message || "Failed to update comment");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
@@ -176,79 +278,127 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
             </p>
           </div>
         ) : (
-          comments.map((comment) => (
-            <div key={comment.id} className="group flex gap-3">
-              {/* Avatar */}
-              <Avatar className="w-8 h-8 flex-shrink-0">
-                {comment.authorAvatar ? (
-                  <AvatarImage
-                    src={`${STATIC_BASE_URL}${comment.authorAvatar}`}
-                    className="object-cover"
-                  />
-                ) : (
-                  <AvatarFallback className="bg-gray-200 text-gray-600 text-xs font-medium">
-                    {comment.authorName.charAt(0).toUpperCase()}
-                  </AvatarFallback>
-                )}
-              </Avatar>
+          comments.map((comment) => {
+            const canEdit = canEditComment(comment);
+            const isEditing = editingCommentId === comment.id;
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-sm font-semibold text-gray-900">
-                    {comment.authorName}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {formatRelativeTime(new Date(comment.createdAt))}
-                  </span>
-                  {comment.isAnonymous && isAdmin && comment.realAuthor && (
-                    <span className="flex items-center gap-1 text-[10px] text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
-                      <Shield className="w-3 h-3" />
-                      {comment.realAuthor.name}
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap leading-normal">
-                  {comment.content}
-                </p>
-
-                {comment.imageUrl && (
-                  <div className="mt-2">
-                    <img
-                      src={`${STATIC_BASE_URL}${comment.imageUrl}`}
-                      alt="Comment attachment"
-                      className="max-w-full rounded-lg border border-gray-200 max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                      onClick={() =>
-                        window.open(
-                          `${STATIC_BASE_URL}${comment.imageUrl}`,
-                          "_blank"
-                        )
-                      }
+            return (
+              <div key={comment.id} className="group flex gap-3">
+                {/* Avatar */}
+                <Avatar className="w-8 h-8 flex-shrink-0">
+                  {comment.authorAvatar ? (
+                    <AvatarImage
+                      src={`${STATIC_BASE_URL}${comment.authorAvatar}`}
+                      className="object-cover"
                     />
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3 mt-1.5">
-                  {/* <button className="text-xs font-medium text-gray-500 hover:text-gray-800 transition-colors cursor-pointer">
-                    Reply
-                  </button> */}
-
-                  {(isAdmin ||
-                    (user &&
-                      !comment.isGuest &&
-                      !comment.isAnonymous &&
-                      comment.authorName === user.name)) && (
-                    <button
-                      onClick={() => handleDelete(comment.id)}
-                      className="text-xs font-medium text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
-                    >
-                      Delete
-                    </button>
+                  ) : (
+                    <AvatarFallback className="bg-gray-200 text-gray-600 text-xs font-medium">
+                      {comment.authorName.charAt(0).toUpperCase()}
+                    </AvatarFallback>
                   )}
+                </Avatar>
+
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-sm font-semibold text-gray-900">
+                      {comment.authorName}
+                    </span>
+                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                      {formatRelativeTime(new Date(comment.createdAt))}
+                      {comment.updatedAt && (
+                        <span className="text-[11px] text-gray-400">
+                          · đã chỉnh sửa{" "}
+                          {formatRelativeTime(new Date(comment.updatedAt))}
+                        </span>
+                      )}
+                    </span>
+                    {comment.isAnonymous && isAdmin && comment.realAuthor && (
+                      <span className="flex items-center gap-1 text-[10px] text-yellow-600 bg-yellow-50 px-1.5 py-0.5 rounded border border-yellow-200">
+                        <Shield className="w-3 h-3" />
+                        {comment.realAuthor.name}
+                      </span>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="mt-1 space-y-2">
+                      <textarea
+                        value={editContent}
+                        onChange={(e) => setEditContent(e.target.value)}
+                        maxLength={500}
+                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <div className="flex items-center gap-2 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => handleUpdate(comment)}
+                          disabled={isUpdating || !editContent.trim()}
+                          className={cn(
+                            "px-3 py-1.5 rounded-md font-medium",
+                            isUpdating || !editContent.trim()
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-blue-600 text-white hover:bg-blue-700"
+                          )}
+                        >
+                          {isUpdating ? "Saving..." : "Save"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 rounded-md font-medium text-gray-600 hover:bg-gray-100"
+                        >
+                          Cancel
+                        </button>
+                        <span className="ml-auto text-gray-400">
+                          {editContent.length}/500
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-700 mt-0.5 whitespace-pre-wrap leading-normal">
+                      {comment.content}
+                    </p>
+                  )}
+
+                  {comment.imageUrl && (
+                    <div className="mt-2">
+                      <img
+                        src={`${STATIC_BASE_URL}${comment.imageUrl}`}
+                        alt="Comment attachment"
+                        className="max-w-full rounded-lg border border-gray-200 max-h-64 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                        onClick={() =>
+                          window.open(
+                            `${STATIC_BASE_URL}${comment.imageUrl}`,
+                            "_blank"
+                          )
+                        }
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-3 mt-1.5">
+                    {canEdit && (
+                      <button
+                        onClick={() => handleStartEdit(comment)}
+                        className="text-xs font-medium text-gray-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        Edit
+                      </button>
+                    )}
+
+                    {canDeleteComment(comment) && (
+                      <button
+                        onClick={() => handleDelete(comment.id)}
+                        className="text-xs font-medium text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
       </div>
 
@@ -289,15 +439,13 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
           </div>
         )}
 
-
-
-
-
         <div className="flex justify-end mb-1 px-1">
           <span
             className={cn(
               "text-xs transition-colors",
-              content.length >= 500 ? "text-red-500 font-medium" : "text-gray-400"
+              content.length >= 500
+                ? "text-red-500 font-medium"
+                : "text-gray-400"
             )}
           >
             {content.length}/500
@@ -376,7 +524,11 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                 onClick={() => setShowEmojiPicker(false)}
               />
               <div className="relative z-10">
-                <EmojiPicker onEmojiClick={onEmojiClick} width={300} height={400} />
+                <EmojiPicker
+                  onEmojiClick={onEmojiClick}
+                  width={300}
+                  height={400}
+                />
               </div>
             </div>
           )}

@@ -10,7 +10,16 @@ import { useNavigate, Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
-import { Eye, EyeOff, LogIn, AlertCircle, Loader2, Lock, User, Home } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  LogIn,
+  AlertCircle,
+  Loader2,
+  Lock,
+  User,
+  Home,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -59,7 +68,10 @@ export default function Login() {
 
   const handleBlur = (field: "username" | "password") => {
     if (field === "username") {
-      setErrors((prev) => ({ ...prev, username: validateUsername(formData.username) }));
+      setErrors((prev) => ({
+        ...prev,
+        username: validateUsername(formData.username),
+      }));
     } else {
       setErrors((prev) => ({
         ...prev,
@@ -85,13 +97,29 @@ export default function Login() {
 
     setIsLoading(true);
     setLoginError("");
-    
+
     try {
       await login(formData.username, formData.password);
       navigate("/", { replace: true });
     } catch (error: unknown) {
-      const err = error as { message?: string };
-      setLoginError(err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.");
+      const err = error as { message?: string; code?: string; email?: string };
+
+      // Handle email not verified error
+      if (err.code === "EMAIL_NOT_VERIFIED" && err.email) {
+        setLoginError(
+          `${err.message} Bạn sẽ được chuyển đến trang xác thực...`
+        );
+        setTimeout(() => {
+          navigate("/register", {
+            state: { email: err.email, needsVerification: true },
+          });
+        }, 2000);
+        return;
+      }
+
+      setLoginError(
+        err.message || "Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin."
+      );
     } finally {
       setIsLoading(false);
     }
@@ -179,7 +207,9 @@ export default function Login() {
                   )}
                   placeholder="username123"
                   aria-invalid={!!errors.username}
-                  aria-describedby={errors.username ? "username-error" : undefined}
+                  aria-describedby={
+                    errors.username ? "username-error" : undefined
+                  }
                 />
               </div>
               {errors.username && (
@@ -223,7 +253,9 @@ export default function Login() {
                   )}
                   placeholder="••••••••"
                   aria-invalid={!!errors.password}
-                  aria-describedby={errors.password ? "password-error" : undefined}
+                  aria-describedby={
+                    errors.password ? "password-error" : undefined
+                  }
                 />
                 <button
                   type="button"

@@ -14,6 +14,9 @@ export interface Comment {
     isAnonymous: boolean;
     isGuest: boolean;
     createdAt: string;
+    updatedAt?: string;
+    isOwner?: boolean;
+    guestToken?: string;
     authorAvatar?: string;
 }
 
@@ -22,6 +25,11 @@ export interface CreateCommentData {
     guestName?: string;
     isAnonymous?: boolean;
     image?: File;
+}
+
+export interface UpdateCommentPayload {
+    content: string;
+    guestToken?: string;
 }
 
 function getAuthHeaders(): Record<string, string> {
@@ -75,6 +83,34 @@ export async function addComment(
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || error.error || "Failed to post comment");
+    }
+
+    return response.json();
+}
+
+/**
+ * Update an existing comment within edit window
+ */
+export async function updateComment(
+    photoId: number,
+    commentId: number,
+    data: UpdateCommentPayload
+): Promise<Comment> {
+    const response = await fetch(
+        `${API_BASE_URL}/photos/${photoId}/comments/${commentId}`,
+        {
+            method: "PATCH",
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeaders(),
+            },
+            body: JSON.stringify(data),
+        }
+    );
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to update comment");
     }
 
     return response.json();

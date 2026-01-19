@@ -556,7 +556,13 @@ export function AdminPage() {
               />
             )}
 
-            {activeTab === "users" && <UserManagement />}
+            {activeTab === "users" && (
+              <UserManagement
+                showToast={(title, description, type) =>
+                  setToast({ message: `${title}: ${description}`, type })
+                }
+              />
+            )}
 
             {activeTab === "create-post" && (
               <BlogPostForm
