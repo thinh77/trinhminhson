@@ -1,5 +1,23 @@
 import { API_BASE_URL } from "./api";
 
+// Allowed reaction emojis
+export const ALLOWED_REACTIONS = ["😘", "☺️", "😌", "😴", "🤢", "🤣", "🥹", "😡", "🤐", "😭"] as const;
+export type ReactionEmoji = typeof ALLOWED_REACTIONS[number];
+
+export interface ReactionData {
+    count: number;
+    hasReacted: boolean;
+}
+
+export interface ReactionMap {
+    [emoji: string]: ReactionData;
+}
+
+export interface ToggleReactionResponse {
+    action: "added" | "removed";
+    reactions: ReactionMap;
+}
+
 export interface Comment {
     id: number;
     photoId: number;
@@ -18,6 +36,7 @@ export interface Comment {
     isOwner?: boolean;
     guestToken?: string;
     authorAvatar?: string;
+    reactions?: ReactionMap;
 }
 
 export interface CreateCommentData {
@@ -135,4 +154,51 @@ export async function deleteComment(
         const error = await response.json();
         throw new Error(error.message || "Failed to delete comment");
     }
+}
+
+/**
+ * Get reactions for a comment
+ */
+export async function getReactions(
+    commentId: number,
+    guestToken?: string
+): Promise<ReactionMap> {
+    const params = new URLSearchParams();
+    if (guestToken) params.set("guestToken", guestToken);
+
+    const url = `${API_BASE_URL}/comments/${commentId}/reactions${params.toString() ? `?${params}` : ""}`;
+    const response = await fetch(url, {
+        headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load reactions");
+    }
+
+    return response.json();
+}
+
+/**
+ * Toggle a reaction on a comment
+ */
+export async function toggleReaction(
+    commentId: number,
+    emoji: ReactionEmoji,
+    guestToken?: string
+): Promise<ToggleReactionResponse> {
+    const response = await fetch(`${API_BASE_URL}/comments/${commentId}/reactions`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ emoji, guestToken }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || "Failed to toggle reaction");
+    }
+
+    return response.json();
 }

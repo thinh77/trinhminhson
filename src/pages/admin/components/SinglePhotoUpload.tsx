@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardContent,
@@ -10,28 +9,30 @@ import {
 } from "@/components/ui/card";
 import { Upload, X, Tag, Calendar, AlertCircle } from "lucide-react";
 import type { Category } from "@/services/categories.service";
-import type { PhotoFormData } from "../types";
+import type { PhotoFormData, PhotoPreview } from "../types";
 
 interface SinglePhotoUploadProps {
   form: PhotoFormData;
   errors: Partial<Record<string, string>>;
-  preview: string | null;
+  previews: PhotoPreview[];
   isSubmitting: boolean;
   categories: Category[];
   onFormChange: (form: PhotoFormData) => void;
-  onPreviewChange: (url: string | null) => void;
+  onPreviewsChange: (previews: PhotoPreview[]) => void;
   onSubmit: (e: React.FormEvent) => void;
   onClear: () => void;
 }
 
+const MAX_FILES = 10;
+
 export function SinglePhotoUpload({
   form,
   errors,
-  preview,
+  previews,
   isSubmitting,
   categories,
   onFormChange,
-  onPreviewChange,
+  onPreviewsChange,
   onSubmit,
   onClear,
 }: SinglePhotoUploadProps): React.ReactElement {
@@ -45,12 +46,41 @@ export function SinglePhotoUpload({
     cat.subcategories.map((sub) => ({ ...sub, categoryName: cat.name }))
   );
 
-  function handleFileChange(file: File): void {
-    const previewUrl = URL.createObjectURL(file);
-    onPreviewChange(previewUrl);
+  function handleFilesChange(fileList: FileList | null): void {
+    if (!fileList) return;
 
-    const title = form.title || file.name.replace(/\.[^/.]+$/, "");
-    onFormChange({ ...form, file, title });
+    const newFiles = Array.from(fileList);
+    const totalFiles = form.files.length + newFiles.length;
+
+    if (totalFiles > MAX_FILES) {
+      alert(
+        `Chỉ được upload tối đa ${MAX_FILES} ảnh. Bạn đã chọn ${form.files.length} ảnh.`
+      );
+      return;
+    }
+
+    // Create previews for new files
+    const newPreviews: PhotoPreview[] = newFiles.map((file) => ({
+      file,
+      url: URL.createObjectURL(file),
+      title: file.name.replace(/\.[^/.]+$/, ""), // Auto-generate title from filename
+    }));
+
+    onFormChange({ ...form, files: [...form.files, ...newFiles] });
+    onPreviewsChange([...previews, ...newPreviews]);
+  }
+
+  function handleRemoveFile(index: number): void {
+    // Revoke the URL to free memory
+    if (previews[index]?.url) {
+      URL.revokeObjectURL(previews[index].url);
+    }
+
+    const newFiles = form.files.filter((_, i) => i !== index);
+    const newPreviews = previews.filter((_, i) => i !== index);
+
+    onFormChange({ ...form, files: newFiles });
+    onPreviewsChange(newPreviews);
   }
 
   function toggleCategory(id: number): void {
@@ -84,47 +114,29 @@ export function SinglePhotoUpload({
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Upload className="w-5 h-5 text-accent" />
-          Add Single Photo
+          Upload Photos
         </CardTitle>
         <CardDescription>
-          Add a single photo with custom title and alt text
+          Upload tối đa {MAX_FILES} ảnh. Description sẽ tự động lấy theo tên
+          file (có thể edit lại sau).
         </CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={onSubmit} className="space-y-6">
-          {/* Title */}
-          <FormField
-            id="photo-title"
-            label="Description"
-            required
-            error={errors.title}
-          >
-            <Input
-              id="photo-title"
-              type="text"
-              placeholder="Mountain Sunset"
-              value={form.title}
-              onChange={(e) => onFormChange({ ...form, title: e.target.value })}
-              className={cn(
-                "bg-background/50",
-                errors.title && "border-red-500 focus-visible:ring-red-500"
-              )}
-            />
-          </FormField>
-
           {/* Image Upload */}
           <FormField
-            id="photo-file"
-            label="Image File"
+            id="photo-files"
+            label="Image Files"
             required
             icon={<Upload className="w-4 h-4 text-muted-foreground" />}
-            error={errors.file}
+            error={errors.files}
           >
             <ImageDropZone
-              file={form.file}
-              preview={preview}
-              hasError={!!errors.file}
-              onFileChange={handleFileChange}
+              files={form.files}
+              previews={previews}
+              hasError={!!errors.files}
+              onFilesChange={handleFilesChange}
+              onRemoveFile={handleRemoveFile}
             />
           </FormField>
 
@@ -198,12 +210,12 @@ export function SinglePhotoUpload({
             required
             icon={<Calendar className="w-4 h-4 text-muted-foreground" />}
           >
-            <Input
+            <input
               id="photo-date"
               type="date"
               value={form.date}
               onChange={(e) => onFormChange({ ...form, date: e.target.value })}
-              className="bg-background/50 w-full sm:w-auto"
+              className="flex h-9 w-full sm:w-auto rounded-md border border-input bg-background/50 px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
             />
           </FormField>
 
@@ -213,17 +225,22 @@ export function SinglePhotoUpload({
               variant="outline"
               onClick={onClear}
               className="cursor-pointer"
+              disabled={isSubmitting}
             >
               <X className="w-4 h-4 mr-2" />
-              Clear
+              Clear All
             </Button>
             <Button
               type="submit"
               className="cursor-pointer"
-              disabled={isSubmitting}
+              disabled={isSubmitting || form.files.length === 0}
             >
               <Upload className="w-4 h-4 mr-2" />
-              {isSubmitting ? "Uploading..." : "Add Photo"}
+              {isSubmitting
+                ? "Uploading..."
+                : `Upload ${form.files.length} Photo${
+                    form.files.length !== 1 ? "s" : ""
+                  }`}
             </Button>
           </div>
         </form>
@@ -233,66 +250,113 @@ export function SinglePhotoUpload({
 }
 
 interface ImageDropZoneProps {
-  file: File | null;
-  preview: string | null;
+  files: File[];
+  previews: PhotoPreview[];
   hasError: boolean;
-  onFileChange: (file: File) => void;
+  onFilesChange: (files: FileList | null) => void;
+  onRemoveFile: (index: number) => void;
 }
 
 function ImageDropZone({
-  file,
-  preview,
+  files,
+  previews,
   hasError,
-  onFileChange,
+  onFilesChange,
+  onRemoveFile,
 }: ImageDropZoneProps): React.ReactElement {
   const borderColor = hasError
     ? "border-red-500"
-    : file
+    : files.length > 0
     ? "border-accent bg-accent/5"
     : "border-border";
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onFilesChange(e.dataTransfer.files);
+  };
+
   return (
-    <div
-      className={cn(
-        "relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer",
-        "hover:border-accent/50 hover:bg-accent/5",
-        borderColor
-      )}
-      onClick={() => document.getElementById("photo-file")?.click()}
-    >
-      <input
-        id="photo-file"
-        type="file"
-        accept="image/*"
-        className="hidden"
-        onChange={(e) => {
-          const selectedFile = e.target.files?.[0];
-          if (selectedFile) {
-            onFileChange(selectedFile);
-          }
-        }}
-      />
-      {preview ? (
-        <div className="space-y-3">
-          <img
-            src={preview}
-            alt="Preview"
-            className="max-h-48 w-auto rounded-lg mx-auto"
-          />
-          <p className="text-sm text-muted-foreground">
-            {file?.name} ({((file?.size || 0) / 1024 / 1024).toFixed(2)} MB)
-          </p>
-          <p className="text-xs text-accent">Click to change image</p>
-        </div>
-      ) : (
+    <div className="space-y-4">
+      {/* Drop zone */}
+      <div
+        className={cn(
+          "relative border-2 border-dashed rounded-xl p-6 text-center transition-all cursor-pointer",
+          "hover:border-accent/50 hover:bg-accent/5",
+          borderColor
+        )}
+        onClick={() => document.getElementById("photo-files")?.click()}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
+        <input
+          id="photo-files"
+          type="file"
+          accept="image/jpeg,image/jpg,image/png"
+          multiple
+          className="hidden"
+          onChange={(e) => onFilesChange(e.target.files)}
+        />
         <div className="space-y-2">
           <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
           <p className="text-sm font-medium text-foreground">
             Click to upload or drag and drop
           </p>
           <p className="text-xs text-muted-foreground">
-            PNG, JPG, GIF up to 10MB
+            PNG, JPG up to 15MB each • Max {MAX_FILES} files
           </p>
+          {files.length > 0 && (
+            <p className="text-xs text-accent">
+              {files.length} / {MAX_FILES} files selected
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Preview grid */}
+      {previews.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          {previews.map((preview, index) => (
+            <div
+              key={index}
+              className="relative group rounded-lg overflow-hidden bg-muted aspect-square"
+            >
+              <img
+                src={preview.url}
+                alt={preview.title}
+                className="w-full h-full object-cover"
+              />
+              {/* Overlay with file info */}
+              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center p-2">
+                <p className="text-white text-xs text-center truncate w-full">
+                  {preview.title}
+                </p>
+                <p className="text-white/70 text-xs">
+                  {(preview.file.size / 1024 / 1024).toFixed(2)} MB
+                </p>
+              </div>
+              {/* Remove button */}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemoveFile(index);
+                }}
+                className="absolute top-1 right-1 w-6 h-6 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              {/* File index */}
+              <div className="absolute bottom-1 left-1 w-5 h-5 bg-accent text-accent-foreground rounded-full flex items-center justify-center text-xs font-medium">
+                {index + 1}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -14,7 +14,7 @@ import { useBlog } from "@/stores/blog-store";
 import { useAuth } from "@/contexts/AuthContext";
 import { postsApi } from "@/services/posts.service";
 import {
-  uploadPhoto,
+  uploadPhotos,
   getPhotos,
   updatePhoto,
   deletePhoto,
@@ -30,7 +30,12 @@ import {
   SinglePhotoUpload,
   PhotoGallery,
 } from "./components";
-import type { TabType, AdminBlogFormData, PhotoFormData } from "./types";
+import type {
+  TabType,
+  AdminBlogFormData,
+  PhotoFormData,
+  PhotoPreview,
+} from "./types";
 
 export function AdminPage() {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -57,17 +62,16 @@ export function AdminPage() {
     readTime: "5 phút đọc",
   });
 
-  // Photo form state
+  // Photo form state (multiple files)
   const [photoForm, setPhotoForm] = useState<PhotoFormData>({
-    title: "",
-    file: null,
+    files: [],
     categoryIds: [],
     subcategoryIds: [],
     date: new Date().toISOString().split("T")[0],
   });
 
-  // Photo preview URL
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  // Photo preview URLs
+  const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
 
   // Photo management state
   const [photos, setPhotos] = useState<Photo[]>([]);
@@ -241,19 +245,23 @@ export function AdminPage() {
   const validatePhotoForm = (): boolean => {
     const errors: Partial<Record<string, string>> = {};
 
-    if (!photoForm.title.trim()) {
-      errors.title = "Title is required";
-    }
-    if (!photoForm.file) {
-      errors.file = "Image file is required";
+    if (photoForm.files.length === 0) {
+      errors.files = "At least one image file is required";
+    } else if (photoForm.files.length > 10) {
+      errors.files = "Maximum 10 files allowed";
     } else {
       const MAX_SIZE = 15 * 1024 * 1024; // 15MB in bytes
       const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
 
-      if (!ALLOWED_TYPES.includes(photoForm.file.type)) {
-        errors.file = "Only JPG and PNG images are allowed";
-      } else if (photoForm.file.size > MAX_SIZE) {
-        errors.file = "Image size must be less than 15MB";
+      for (const file of photoForm.files) {
+        if (!ALLOWED_TYPES.includes(file.type)) {
+          errors.files = "Only JPG and PNG images are allowed";
+          break;
+        }
+        if (file.size > MAX_SIZE) {
+          errors.files = "Each image must be less than 15MB";
+          break;
+        }
       }
     }
     if (!photoForm.categoryIds || photoForm.categoryIds.length === 0) {
@@ -350,8 +358,11 @@ export function AdminPage() {
       return;
     }
 
-    if (!photoForm.file) {
-      setToast({ message: "Please select an image file", type: "error" });
+    if (photoForm.files.length === 0) {
+      setToast({
+        message: "Please select at least one image file",
+        type: "error",
+      });
       return;
     }
 
@@ -365,8 +376,7 @@ export function AdminPage() {
 
     setIsSubmitting(true);
     try {
-      await uploadPhoto(photoForm.file, {
-        title: photoForm.title,
+      const result = await uploadPhotos(photoForm.files, {
         categoryIds: photoForm.categoryIds,
         subcategoryIds:
           photoForm.subcategoryIds.length > 0
@@ -376,26 +386,40 @@ export function AdminPage() {
         isPublic: true,
       });
 
+      // Clear previews URLs to free memory
+      photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
+
       setPhotoForm({
-        title: "",
-        file: null,
+        files: [],
         categoryIds: [],
         subcategoryIds: [],
         date: new Date().toISOString().split("T")[0],
       });
-      setPhotoPreview(null);
+      setPhotoPreviews([]);
       setPhotoErrors({});
 
       await loadPhotos();
 
-      setToast({ message: "Photo uploaded successfully!", type: "success" });
+      if (result.errors && result.errors.length > 0) {
+        setToast({
+          message: `Uploaded ${result.uploaded.length} of ${result.total} photos. ${result.errors.length} failed.`,
+          type: result.uploaded.length > 0 ? "success" : "error",
+        });
+      } else {
+        setToast({
+          message: `${result.uploaded.length} photo${
+            result.uploaded.length !== 1 ? "s" : ""
+          } uploaded successfully!`,
+          type: "success",
+        });
+      }
     } catch (error) {
-      console.error("Failed to upload photo:", error);
+      console.error("Failed to upload photos:", error);
       setToast({
         message:
           error instanceof Error
             ? error.message
-            : "Failed to upload photo. Please try again.",
+            : "Failed to upload photos. Please try again.",
         type: "error",
       });
     } finally {
@@ -592,21 +616,24 @@ export function AdminPage() {
                 <SinglePhotoUpload
                   form={photoForm}
                   errors={photoErrors}
-                  preview={photoPreview}
+                  previews={photoPreviews}
                   isSubmitting={isSubmitting}
                   categories={categoriesData}
                   onFormChange={setPhotoForm}
-                  onPreviewChange={setPhotoPreview}
+                  onPreviewsChange={setPhotoPreviews}
                   onSubmit={handlePhotoSubmit}
                   onClear={() => {
+                    // Clear preview URLs to free memory
+                    photoPreviews.forEach((preview) =>
+                      URL.revokeObjectURL(preview.url)
+                    );
                     setPhotoForm({
-                      title: "",
-                      file: null,
+                      files: [],
                       categoryIds: [],
                       subcategoryIds: [],
                       date: new Date().toISOString().split("T")[0],
                     });
-                    setPhotoPreview(null);
+                    setPhotoPreviews([]);
                     setPhotoErrors({});
                   }}
                 />

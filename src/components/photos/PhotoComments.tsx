@@ -6,7 +6,11 @@ import {
   addComment,
   deleteComment,
   updateComment,
+  toggleReaction,
+  ALLOWED_REACTIONS,
   type Comment,
+  type ReactionMap,
+  type ReactionEmoji,
 } from "@/services/comments.service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,6 +21,7 @@ import {
   Image as ImageIcon,
   X as XIcon,
   Smile,
+  SmilePlus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STATIC_BASE_URL } from "@/services/api";
@@ -63,6 +68,15 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
   const [editContent, setEditContent] = useState("");
   const [isUpdating, setIsUpdating] = useState(false);
+  const [commentReactions, setCommentReactions] = useState<
+    Record<number, ReactionMap>
+  >({});
+  const [showReactionPicker, setShowReactionPicker] = useState<number | null>(
+    null
+  );
+  const [reactingCommentId, setReactingCommentId] = useState<number | null>(
+    null
+  );
 
   // Form state
   const [content, setContent] = useState("");
@@ -159,6 +173,16 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
       setIsLoading(true);
       const data = await getCommentsByPhoto(photoId);
       setComments(data);
+
+      // Extract reactions from comments
+      const reactionsData: Record<number, ReactionMap> = {};
+      for (const comment of data) {
+        if (comment.reactions) {
+          reactionsData[comment.id] = comment.reactions;
+        }
+      }
+      setCommentReactions(reactionsData);
+
       setError(null);
     } catch (err) {
       console.error("Failed to load comments:", err);
@@ -254,6 +278,31 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
       setError(err.message || "Failed to update comment");
     } finally {
       setIsUpdating(false);
+    }
+  };
+
+  const handleReaction = async (commentId: number, emoji: ReactionEmoji) => {
+    // Must be logged in or have a guest token
+    const guestToken = getGuestToken(commentId);
+    if (!user && !guestToken) {
+      setError("Please log in to react to comments");
+      return;
+    }
+
+    try {
+      setReactingCommentId(commentId);
+      const result = await toggleReaction(commentId, emoji, guestToken);
+
+      setCommentReactions((prev) => ({
+        ...prev,
+        [commentId]: result.reactions,
+      }));
+      setShowReactionPicker(null);
+    } catch (err: any) {
+      console.error("Failed to toggle reaction:", err);
+      setError(err.message || "Failed to react");
+    } finally {
+      setReactingCommentId(null);
     }
   };
 
@@ -376,7 +425,104 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-3 mt-1.5">
+                  {/* Reactions display */}
+                  {(() => {
+                    const reactions = commentReactions[comment.id] || {};
+                    const reactionEntries = Object.entries(reactions).filter(
+                      ([, data]) => data.count > 0
+                    );
+
+                    return (
+                      reactionEntries.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                          {reactionEntries.map(([emoji, data]) => (
+                            <button
+                              key={emoji}
+                              onClick={() =>
+                                handleReaction(
+                                  comment.id,
+                                  emoji as ReactionEmoji
+                                )
+                              }
+                              disabled={reactingCommentId === comment.id}
+                              className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition-all",
+                                data.hasReacted
+                                  ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                  : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200",
+                                "cursor-pointer"
+                              )}
+                            >
+                              <span>{emoji}</span>
+                              <span className="font-medium">{data.count}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )
+                    );
+                  })()}
+
+                  {/* Actions row */}
+                  <div className="flex items-center gap-3 mt-1.5 relative">
+                    {/* Reaction button */}
+                    <div className="relative">
+                      <button
+                        onClick={() =>
+                          setShowReactionPicker(
+                            showReactionPicker === comment.id
+                              ? null
+                              : comment.id
+                          )
+                        }
+                        disabled={!user && !getGuestToken(comment.id)}
+                        className={cn(
+                          "text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
+                          showReactionPicker === comment.id
+                            ? "text-blue-600"
+                            : "text-gray-400 hover:text-blue-600",
+                          !user &&
+                            !getGuestToken(comment.id) &&
+                            "opacity-50 cursor-not-allowed"
+                        )}
+                      >
+                        <SmilePlus className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Reaction picker popup */}
+                      {showReactionPicker === comment.id && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-10"
+                            onClick={() => setShowReactionPicker(null)}
+                          />
+                          <div className="absolute bottom-0 left-5 z-20 bg-white rounded-xl shadow-lg border border-gray-200 p-2 grid grid-cols-5 gap-1 w-[180px] animate-in fade-in slide-in-from-bottom-2">
+                            {ALLOWED_REACTIONS.map((emoji) => {
+                              const hasReacted =
+                                commentReactions[comment.id]?.[emoji]
+                                  ?.hasReacted;
+                              return (
+                                <button
+                                  key={emoji}
+                                  onClick={() =>
+                                    handleReaction(comment.id, emoji)
+                                  }
+                                  disabled={reactingCommentId === comment.id}
+                                  className={cn(
+                                    "w-8 h-8 flex items-center justify-center rounded-full text-lg hover:bg-gray-100 transition-all hover:scale-110",
+                                    hasReacted && "bg-blue-100",
+                                    reactingCommentId === comment.id &&
+                                      "opacity-50"
+                                  )}
+                                >
+                                  {emoji}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                     {canEdit && (
                       <button
                         onClick={() => handleStartEdit(comment)}

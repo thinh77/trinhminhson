@@ -3,11 +3,16 @@ import type { BlogFormData } from "@/types/blog";
 export type AdminBlogFormData = BlogFormData;
 
 export interface PhotoFormData {
-  title: string;
-  file: File | null;
+  files: File[];
   categoryIds: number[];
   subcategoryIds: number[];
   date: string;
+}
+
+export interface PhotoPreview {
+  file: File;
+  url: string;
+  title: string;
 }
 
 export interface AlbumFormData {

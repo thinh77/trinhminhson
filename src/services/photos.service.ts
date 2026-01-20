@@ -52,11 +52,25 @@ export interface Photo {
 }
 
 export interface UploadPhotoData {
-  title: string;
+  title?: string;
   categoryIds?: number[];
   subcategoryIds?: number[];
   dateTaken?: string;
   isPublic?: boolean;
+}
+
+export interface UploadMultipleData {
+  categoryIds?: number[];
+  subcategoryIds?: number[];
+  dateTaken?: string;
+  isPublic?: boolean;
+}
+
+export interface UploadMultipleResponse {
+  message: string;
+  uploaded: Photo[];
+  errors: Array<{ filename: string; error: string }>;
+  total: number;
 }
 
 export interface UpdatePhotoData {
@@ -114,15 +128,15 @@ export async function getPhotoById(id: number): Promise<Photo> {
 }
 
 /**
- * Upload a new photo
+ * Upload a new photo (single file)
  */
 export async function uploadPhoto(
   file: File,
   data: UploadPhotoData
 ): Promise<Photo> {
   const formData = new FormData();
-  formData.append("file", file);
-  formData.append("title", data.title);
+  formData.append("files", file);
+  if (data.title) formData.append("title", data.title);
   if (data.categoryIds && data.categoryIds.length > 0) {
     formData.append("categoryIds", JSON.stringify(data.categoryIds));
   }
@@ -141,6 +155,46 @@ export async function uploadPhoto(
   if (!response.ok) {
     const error = await response.json();
     throw new Error(error.error || "Failed to upload photo");
+  }
+
+  const result = await response.json();
+  // For single file upload, return the first uploaded photo
+  return result.uploaded?.[0] || result;
+}
+
+/**
+ * Upload multiple photos (up to 10 files)
+ * Title is auto-generated from filename on the server
+ */
+export async function uploadPhotos(
+  files: File[],
+  data: UploadMultipleData
+): Promise<UploadMultipleResponse> {
+  const formData = new FormData();
+
+  // Append each file
+  files.forEach((file) => {
+    formData.append("files", file);
+  });
+
+  if (data.categoryIds && data.categoryIds.length > 0) {
+    formData.append("categoryIds", JSON.stringify(data.categoryIds));
+  }
+  if (data.subcategoryIds && data.subcategoryIds.length > 0) {
+    formData.append("subcategoryIds", JSON.stringify(data.subcategoryIds));
+  }
+  if (data.dateTaken) formData.append("dateTaken", data.dateTaken);
+  formData.append("isPublic", String(data.isPublic !== false));
+
+  const response = await fetch(`${API_BASE_URL}/photos`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: formData,
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to upload photos");
   }
 
   return response.json();
