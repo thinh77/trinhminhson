@@ -4,6 +4,10 @@ import { API_BASE_URL } from "./api";
 export const ALLOWED_REACTIONS = ["😘", "☺️", "😌", "😴", "🤢", "🤣", "🥹", "😡", "🤐", "😭"] as const;
 export type ReactionEmoji = typeof ALLOWED_REACTIONS[number];
 
+// Vote types
+export const VOTE_TYPES = ["like", "dislike"] as const;
+export type VoteType = typeof VOTE_TYPES[number];
+
 export interface ReactionData {
     count: number;
     hasReacted: boolean;
@@ -16,6 +20,17 @@ export interface ReactionMap {
 export interface ToggleReactionResponse {
     action: "added" | "removed";
     reactions: ReactionMap;
+}
+
+export interface VoteData {
+    likes: number;
+    dislikes: number;
+    userVote: VoteType | null;
+}
+
+export interface ToggleVoteResponse {
+    action: "added" | "removed" | "switched";
+    votes: VoteData;
 }
 
 export interface Comment {
@@ -198,6 +213,76 @@ export async function toggleReaction(
     if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || error.error || "Failed to toggle reaction");
+    }
+
+    return response.json();
+}
+
+/**
+ * Get votes for a comment
+ */
+export async function getVotes(
+    commentId: number,
+    guestToken?: string
+): Promise<VoteData> {
+    const params = new URLSearchParams();
+    if (guestToken) params.set("guestToken", guestToken);
+
+    const url = `${API_BASE_URL}/comments/${commentId}/votes${params.toString() ? `?${params}` : ""}`;
+    const response = await fetch(url, {
+        headers: getAuthHeaders(),
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load votes");
+    }
+
+    return response.json();
+}
+
+/**
+ * Toggle a vote on a comment (like/dislike)
+ */
+export async function toggleVote(
+    commentId: number,
+    voteType: VoteType,
+    guestToken?: string
+): Promise<ToggleVoteResponse> {
+    const response = await fetch(`${API_BASE_URL}/comments/${commentId}/votes`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ voteType, guestToken }),
+    });
+
+    if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || error.error || "Failed to toggle vote");
+    }
+
+    return response.json();
+}
+
+/**
+ * Get votes for multiple comments (batch)
+ */
+export async function getVotesForComments(
+    commentIds: number[],
+    guestToken?: string
+): Promise<Record<number, VoteData>> {
+    const response = await fetch(`${API_BASE_URL}/comments/votes/batch`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+        },
+        body: JSON.stringify({ commentIds, guestToken }),
+    });
+
+    if (!response.ok) {
+        throw new Error("Failed to load votes");
     }
 
     return response.json();

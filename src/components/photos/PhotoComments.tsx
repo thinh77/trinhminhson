@@ -7,10 +7,14 @@ import {
   deleteComment,
   updateComment,
   toggleReaction,
+  toggleVote,
+  getVotesForComments,
   ALLOWED_REACTIONS,
   type Comment,
   type ReactionMap,
   type ReactionEmoji,
+  type VoteData,
+  type VoteType,
 } from "@/services/comments.service";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -22,6 +26,8 @@ import {
   X as XIcon,
   Smile,
   SmilePlus,
+  ThumbsUp,
+  ThumbsDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STATIC_BASE_URL } from "@/services/api";
@@ -77,6 +83,10 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const [reactingCommentId, setReactingCommentId] = useState<number | null>(
     null
   );
+  const [commentVotes, setCommentVotes] = useState<Record<number, VoteData>>(
+    {}
+  );
+  const [votingCommentId, setVotingCommentId] = useState<number | null>(null);
 
   // Form state
   const [content, setContent] = useState("");
@@ -182,6 +192,19 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
         }
       }
       setCommentReactions(reactionsData);
+
+      // Load votes for all comments
+      if (data.length > 0) {
+        const commentIds = data.map((c) => c.id);
+        // Get guest token from any comment the user owns
+        const guestToken = Object.values(guestTokens)[0] || undefined;
+        try {
+          const votesData = await getVotesForComments(commentIds, guestToken);
+          setCommentVotes(votesData);
+        } catch (err) {
+          console.error("Failed to load votes:", err);
+        }
+      }
 
       setError(null);
     } catch (err) {
@@ -306,6 +329,30 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     }
   };
 
+  const handleVote = async (commentId: number, voteType: VoteType) => {
+    // Must be logged in or have a guest token
+    const guestToken = getGuestToken(commentId) || Object.values(guestTokens)[0];
+    if (!user && !guestToken) {
+      setError("Please log in to vote on comments");
+      return;
+    }
+
+    try {
+      setVotingCommentId(commentId);
+      const result = await toggleVote(commentId, voteType, guestToken);
+
+      setCommentVotes((prev) => ({
+        ...prev,
+        [commentId]: result.votes,
+      }));
+    } catch (err: any) {
+      console.error("Failed to toggle vote:", err);
+      setError(err.message || "Failed to vote");
+    } finally {
+      setVotingCommentId(null);
+    }
+  };
+
   const isAdmin = user?.role === "admin";
 
   return (
@@ -334,7 +381,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
             return (
               <div key={comment.id} className="group flex gap-3">
                 {/* Avatar */}
-                <Avatar className="w-8 h-8 flex-shrink-0">
+                <Avatar className="w-8 h-8 shrink-0">
                   {comment.authorAvatar ? (
                     <AvatarImage
                       src={`${STATIC_BASE_URL}${comment.authorAvatar}`}
@@ -464,6 +511,65 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
                   {/* Actions row */}
                   <div className="flex items-center gap-3 mt-1.5 relative">
+                    {/* Like/Dislike buttons */}
+                    {(() => {
+                      const votes = commentVotes[comment.id] || {
+                        likes: 0,
+                        dislikes: 0,
+                        userVote: null,
+                      };
+                      const canVote = user || getGuestToken(comment.id) || Object.values(guestTokens)[0];
+                      const isVoting = votingCommentId === comment.id;
+
+                      return (
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => handleVote(comment.id, "like")}
+                            disabled={!canVote || isVoting}
+                            className={cn(
+                              "flex items-center gap-1 text-xs transition-all cursor-pointer",
+                              votes.userVote === "like"
+                                ? "text-blue-600 font-medium"
+                                : "text-gray-400 hover:text-blue-600",
+                              (!canVote || isVoting) && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <ThumbsUp
+                              className={cn(
+                                "w-3.5 h-3.5",
+                                votes.userVote === "like" && "fill-blue-600"
+                              )}
+                            />
+                            {votes.likes > 0 && (
+                              <span>{votes.likes}</span>
+                            )}
+                          </button>
+
+                          <button
+                            onClick={() => handleVote(comment.id, "dislike")}
+                            disabled={!canVote || isVoting}
+                            className={cn(
+                              "flex items-center gap-1 text-xs transition-all cursor-pointer",
+                              votes.userVote === "dislike"
+                                ? "text-red-600 font-medium"
+                                : "text-gray-400 hover:text-red-600",
+                              (!canVote || isVoting) && "opacity-50 cursor-not-allowed"
+                            )}
+                          >
+                            <ThumbsDown
+                              className={cn(
+                                "w-3.5 h-3.5",
+                                votes.userVote === "dislike" && "fill-red-600"
+                              )}
+                            />
+                            {votes.dislikes > 0 && (
+                              <span>{votes.dislikes}</span>
+                            )}
+                          </button>
+                        </div>
+                      );
+                    })()}
+
                     {/* Reaction button */}
                     <div className="relative">
                       <button
