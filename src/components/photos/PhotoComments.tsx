@@ -28,6 +28,8 @@ import {
   SmilePlus,
   ThumbsUp,
   ThumbsDown,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { STATIC_BASE_URL } from "@/services/api";
@@ -39,6 +41,7 @@ interface PhotoCommentsProps {
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 const DELETE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const COMMENT_TOKEN_KEY = "comment_tokens";
+const GUEST_VOTE_TOKEN_KEY = "guest_vote_token";
 
 function loadGuestTokens(): Record<number, string> {
   if (typeof window === "undefined") return {};
@@ -47,6 +50,23 @@ function loadGuestTokens(): Record<number, string> {
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
+  }
+}
+
+function getOrCreateGuestVoteToken(): string {
+  if (typeof window === "undefined") return "";
+  try {
+    let token = localStorage.getItem(GUEST_VOTE_TOKEN_KEY);
+    if (!token) {
+      // Generate a random 32-character token
+      token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      localStorage.setItem(GUEST_VOTE_TOKEN_KEY, token);
+    }
+    return token;
+  } catch {
+    return "";
   }
 }
 
@@ -87,6 +107,11 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     {}
   );
   const [votingCommentId, setVotingCommentId] = useState<number | null>(null);
+
+  // Reply state
+  const [replyingTo, setReplyingTo] = useState<Comment | null>(null);
+  const [replyContent, setReplyContent] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
   // Form state
   const [content, setContent] = useState("");
@@ -184,22 +209,33 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
       const data = await getCommentsByPhoto(photoId);
       setComments(data);
 
-      // Extract reactions from comments
+      // Extract reactions from comments (including replies)
       const reactionsData: Record<number, ReactionMap> = {};
+      const allCommentIds: number[] = [];
+
       for (const comment of data) {
+        allCommentIds.push(comment.id);
         if (comment.reactions) {
           reactionsData[comment.id] = comment.reactions;
+        }
+        // Also process replies
+        if (comment.replies) {
+          for (const reply of comment.replies) {
+            allCommentIds.push(reply.id);
+            if (reply.reactions) {
+              reactionsData[reply.id] = reply.reactions;
+            }
+          }
         }
       }
       setCommentReactions(reactionsData);
 
-      // Load votes for all comments
-      if (data.length > 0) {
-        const commentIds = data.map((c) => c.id);
-        // Get guest token from any comment the user owns
-        const guestToken = Object.values(guestTokens)[0] || undefined;
+      // Load votes for all comments and replies
+      if (allCommentIds.length > 0) {
+        // Use guest vote token for anonymous users to see their vote status
+        const guestToken = user ? undefined : getOrCreateGuestVoteToken() || undefined;
         try {
-          const votesData = await getVotesForComments(commentIds, guestToken);
+          const votesData = await getVotesForComments(allCommentIds, guestToken);
           setCommentVotes(votesData);
         } catch (err) {
           console.error("Failed to load votes:", err);
@@ -330,12 +366,8 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   };
 
   const handleVote = async (commentId: number, voteType: VoteType) => {
-    // Must be logged in or have a guest token
-    const guestToken = getGuestToken(commentId) || Object.values(guestTokens)[0];
-    if (!user && !guestToken) {
-      setError("Please log in to vote on comments");
-      return;
-    }
+    // Use user auth, or get/create a guest vote token for anonymous voting
+    const guestToken = user ? undefined : getOrCreateGuestVoteToken();
 
     try {
       setVotingCommentId(commentId);
@@ -350,6 +382,64 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
       setError(err.message || "Failed to vote");
     } finally {
       setVotingCommentId(null);
+    }
+  };
+
+  const handleStartReply = (comment: Comment) => {
+    setReplyingTo(comment);
+    setReplyContent("");
+    setError(null);
+  };
+
+  const handleCancelReply = () => {
+    setReplyingTo(null);
+    setReplyContent("");
+  };
+
+  const handleSubmitReply = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!replyContent.trim() || !replyingTo) return;
+
+    try {
+      setIsSubmittingReply(true);
+      setError(null);
+
+      const newReply = await addComment(photoId, {
+        content: replyContent,
+        guestName: !user ? guestName : undefined,
+        isAnonymous: user ? isAnonymous : undefined,
+        parentId: replyingTo.id,
+      });
+
+      if (newReply.guestToken) {
+        persistGuestToken(newReply.id, newReply.guestToken);
+      }
+
+      // Add the reply to the parent comment's replies array
+      setComments((prev) =>
+        prev.map((c) => {
+          if (c.id === replyingTo.id) {
+            return {
+              ...c,
+              replies: [...(c.replies || []), newReply],
+            };
+          }
+          return c;
+        })
+      );
+
+      setReplyContent("");
+      setReplyingTo(null);
+      if (!user) {
+        setGuestName("Guest");
+        setShowGuestInput(false);
+      }
+      setIsAnonymous(false);
+    } catch (err: any) {
+      console.error("Failed to post reply:", err);
+      setError(err.message || "Failed to post reply");
+    } finally {
+      setIsSubmittingReply(false);
     }
   };
 
@@ -518,7 +608,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                         dislikes: 0,
                         userVote: null,
                       };
-                      const canVote = user || getGuestToken(comment.id) || Object.values(guestTokens)[0];
+                      const canVote = true; // Anyone can vote (logged in users or guests with auto-generated token)
                       const isVoting = votingCommentId === comment.id;
 
                       return (
@@ -540,9 +630,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                                 votes.userVote === "like" && "fill-blue-600"
                               )}
                             />
-                            {votes.likes > 0 && (
-                              <span>{votes.likes}</span>
-                            )}
+                            <span>{votes.likes}</span>
                           </button>
 
                           <button
@@ -562,9 +650,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                                 votes.userVote === "dislike" && "fill-red-600"
                               )}
                             />
-                            {votes.dislikes > 0 && (
-                              <span>{votes.dislikes}</span>
-                            )}
+                            <span>{votes.dislikes}</span>
                           </button>
                         </div>
                       );
@@ -587,8 +673,8 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                             ? "text-blue-600"
                             : "text-gray-400 hover:text-blue-600",
                           !user &&
-                            !getGuestToken(comment.id) &&
-                            "opacity-50 cursor-not-allowed"
+                          !getGuestToken(comment.id) &&
+                          "opacity-50 cursor-not-allowed"
                         )}
                       >
                         <SmilePlus className="w-3.5 h-3.5" />
@@ -617,7 +703,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                                     "w-8 h-8 flex items-center justify-center rounded-full text-lg hover:bg-gray-100 transition-all hover:scale-110",
                                     hasReacted && "bg-blue-100",
                                     reactingCommentId === comment.id &&
-                                      "opacity-50"
+                                    "opacity-50"
                                   )}
                                 >
                                   {emoji}
@@ -628,6 +714,17 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                         </>
                       )}
                     </div>
+
+                    {/* Reply button - only for top-level comments */}
+                    {!comment.parentId && (
+                      <button
+                        onClick={() => handleStartReply(comment)}
+                        className="text-xs font-medium text-gray-400 hover:text-blue-600 transition-colors cursor-pointer flex items-center gap-1"
+                      >
+                        <Reply className="w-3.5 h-3.5" />
+                        Reply
+                      </button>
+                    )}
 
                     {canEdit && (
                       <button
@@ -647,6 +744,237 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                       </button>
                     )}
                   </div>
+
+                  {/* Reply input form */}
+                  {replyingTo?.id === comment.id && (
+                    <div className="mt-3 pl-2 border-l-2 border-blue-200">
+                      <form onSubmit={handleSubmitReply} className="flex items-start gap-2">
+                        <input
+                          type="text"
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder={`Reply to ${comment.authorName}...`}
+                          maxLength={500}
+                          autoFocus
+                          className="flex-1 px-3 py-2 bg-gray-50 rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
+                        />
+                        <button
+                          type="submit"
+                          disabled={isSubmittingReply || !replyContent.trim()}
+                          className={cn(
+                            "p-2 rounded-lg transition-colors",
+                            replyContent.trim()
+                              ? "text-blue-600 hover:bg-blue-50"
+                              : "text-gray-300 cursor-not-allowed"
+                          )}
+                        >
+                          {isSubmittingReply ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCancelReply}
+                          className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100"
+                        >
+                          <XIcon className="w-4 h-4" />
+                        </button>
+                      </form>
+                    </div>
+                  )}
+
+                  {/* Replies section */}
+                  {comment.replies && comment.replies.length > 0 && (
+                    <div className="mt-3 space-y-3 pl-2 border-l-2 border-gray-100">
+                      {comment.replies.map((reply) => {
+                        const canEditReply = canEditComment(reply);
+                        const isEditingReply = editingCommentId === reply.id;
+
+                        return (
+                          <div key={reply.id} className="group flex gap-2">
+                            <CornerDownRight className="w-4 h-4 text-gray-300 shrink-0 mt-1" />
+                            <Avatar className="w-6 h-6 shrink-0">
+                              {reply.authorAvatar ? (
+                                <AvatarImage
+                                  src={`${STATIC_BASE_URL}${reply.authorAvatar}`}
+                                  className="object-cover"
+                                />
+                              ) : (
+                                <AvatarFallback className="bg-gray-200 text-gray-600 text-[10px] font-medium">
+                                  {reply.authorName.charAt(0).toUpperCase()}
+                                </AvatarFallback>
+                              )}
+                            </Avatar>
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-baseline gap-2">
+                                <span className="text-xs font-semibold text-gray-900">
+                                  {reply.authorName}
+                                </span>
+                                <span className="text-[11px] text-gray-500">
+                                  {formatRelativeTime(new Date(reply.createdAt))}
+                                </span>
+                                {reply.isAnonymous && isAdmin && reply.realAuthor && (
+                                  <span className="flex items-center gap-0.5 text-[9px] text-yellow-600 bg-yellow-50 px-1 py-0.5 rounded">
+                                    <Shield className="w-2.5 h-2.5" />
+                                    {reply.realAuthor.name}
+                                  </span>
+                                )}
+                              </div>
+
+                              {isEditingReply ? (
+                                <div className="mt-1 space-y-2">
+                                  <textarea
+                                    value={editContent}
+                                    onChange={(e) => setEditContent(e.target.value)}
+                                    maxLength={500}
+                                    className="w-full rounded-lg border border-gray-200 px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                  />
+                                  <div className="flex items-center gap-2 text-xs">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleUpdate(reply)}
+                                      disabled={isUpdating || !editContent.trim()}
+                                      className={cn(
+                                        "px-2 py-1 rounded-md font-medium text-xs",
+                                        isUpdating || !editContent.trim()
+                                          ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                                          : "bg-blue-600 text-white hover:bg-blue-700"
+                                      )}
+                                    >
+                                      {isUpdating ? "Saving..." : "Save"}
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={handleCancelEdit}
+                                      className="px-2 py-1 rounded-md font-medium text-xs text-gray-600 hover:bg-gray-100"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <p className="text-xs text-gray-700 mt-0.5 whitespace-pre-wrap leading-normal">
+                                  {reply.content}
+                                </p>
+                              )}
+
+                              {/* Reply reactions */}
+                              {(() => {
+                                const reactions = commentReactions[reply.id] || {};
+                                const reactionEntries = Object.entries(reactions).filter(
+                                  ([, data]) => data.count > 0
+                                );
+
+                                return (
+                                  reactionEntries.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1 mt-1">
+                                      {reactionEntries.map(([emoji, data]) => (
+                                        <button
+                                          key={emoji}
+                                          onClick={() =>
+                                            handleReaction(reply.id, emoji as ReactionEmoji)
+                                          }
+                                          disabled={reactingCommentId === reply.id}
+                                          className={cn(
+                                            "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[10px] transition-all",
+                                            data.hasReacted
+                                              ? "bg-blue-100 text-blue-700 border border-blue-300"
+                                              : "bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200",
+                                            "cursor-pointer"
+                                          )}
+                                        >
+                                          <span>{emoji}</span>
+                                          <span className="font-medium">{data.count}</span>
+                                        </button>
+                                      ))}
+                                    </div>
+                                  )
+                                );
+                              })()}
+
+                              {/* Reply actions */}
+                              <div className="flex items-center gap-2 mt-1">
+                                {/* Like/Dislike for reply */}
+                                {(() => {
+                                  const votes = commentVotes[reply.id] || {
+                                    likes: 0,
+                                    dislikes: 0,
+                                    userVote: null,
+                                  };
+                                  const isVoting = votingCommentId === reply.id;
+
+                                  return (
+                                    <div className="flex items-center gap-1.5">
+                                      <button
+                                        onClick={() => handleVote(reply.id, "like")}
+                                        disabled={isVoting}
+                                        className={cn(
+                                          "flex items-center gap-0.5 text-[10px] transition-all cursor-pointer",
+                                          votes.userVote === "like"
+                                            ? "text-blue-600 font-medium"
+                                            : "text-gray-400 hover:text-blue-600",
+                                          isVoting && "opacity-50 cursor-not-allowed"
+                                        )}
+                                      >
+                                        <ThumbsUp
+                                          className={cn(
+                                            "w-3 h-3",
+                                            votes.userVote === "like" && "fill-blue-600"
+                                          )}
+                                        />
+                                        <span>{votes.likes}</span>
+                                      </button>
+
+                                      <button
+                                        onClick={() => handleVote(reply.id, "dislike")}
+                                        disabled={isVoting}
+                                        className={cn(
+                                          "flex items-center gap-0.5 text-[10px] transition-all cursor-pointer",
+                                          votes.userVote === "dislike"
+                                            ? "text-red-600 font-medium"
+                                            : "text-gray-400 hover:text-red-600",
+                                          isVoting && "opacity-50 cursor-not-allowed"
+                                        )}
+                                      >
+                                        <ThumbsDown
+                                          className={cn(
+                                            "w-3 h-3",
+                                            votes.userVote === "dislike" && "fill-red-600"
+                                          )}
+                                        />
+                                        <span>{votes.dislikes}</span>
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
+
+                                {canEditReply && (
+                                  <button
+                                    onClick={() => handleStartEdit(reply)}
+                                    className="text-[10px] font-medium text-gray-400 hover:text-blue-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                )}
+
+                                {canDeleteComment(reply) && (
+                                  <button
+                                    onClick={() => handleDelete(reply.id)}
+                                    className="text-[10px] font-medium text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             );

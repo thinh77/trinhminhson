@@ -36,6 +36,7 @@ export interface ToggleVoteResponse {
 export interface Comment {
     id: number;
     photoId: number;
+    parentId?: number | null;
     authorName: string;
     realAuthor?: {
         id: number;
@@ -52,6 +53,7 @@ export interface Comment {
     guestToken?: string;
     authorAvatar?: string;
     reactions?: ReactionMap;
+    replies?: Comment[];
 }
 
 export interface CreateCommentData {
@@ -59,6 +61,7 @@ export interface CreateCommentData {
     guestName?: string;
     isAnonymous?: boolean;
     image?: File;
+    parentId?: number;
 }
 
 export interface UpdateCommentPayload {
@@ -87,7 +90,7 @@ export async function getCommentsByPhoto(photoId: number): Promise<Comment[]> {
 }
 
 /**
- * Add a new comment
+ * Add a new comment (or reply)
  */
 export async function addComment(
     photoId: number,
@@ -106,6 +109,10 @@ export async function addComment(
 
     if (data.image) {
         formData.append("image", data.image);
+    }
+
+    if (data.parentId !== undefined) {
+        formData.append("parentId", String(data.parentId));
     }
 
     const response = await fetch(`${API_BASE_URL}/photos/${photoId}/comments`, {
