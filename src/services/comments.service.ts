@@ -159,16 +159,22 @@ export async function updateComment(
 
 /**
  * Delete a comment
+ * For guest comments, pass the guestToken for authorization
  */
 export async function deleteComment(
     photoId: number,
-    commentId: number
+    commentId: number,
+    guestToken?: string
 ): Promise<void> {
     const response = await fetch(
         `${API_BASE_URL}/photos/${photoId}/comments/${commentId}`,
         {
             method: "DELETE",
-            headers: getAuthHeaders(),
+            headers: {
+                "Content-Type": "application/json",
+                ...getAuthHeaders(),
+            },
+            body: JSON.stringify({ guestToken }),
         }
     );
 

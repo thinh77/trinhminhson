@@ -32,6 +32,7 @@ import {
   CornerDownRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatGuestDisplayName } from "@/lib/guestName";
 import { STATIC_BASE_URL } from "@/services/api";
 
 interface PhotoCommentsProps {
@@ -41,7 +42,6 @@ interface PhotoCommentsProps {
 const EDIT_WINDOW_MS = 5 * 60 * 1000;
 const DELETE_WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
 const COMMENT_TOKEN_KEY = "comment_tokens";
-const GUEST_VOTE_TOKEN_KEY = "guest_vote_token";
 
 function loadGuestTokens(): Record<number, string> {
   if (typeof window === "undefined") return {};
@@ -50,23 +50,6 @@ function loadGuestTokens(): Record<number, string> {
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
-  }
-}
-
-function getOrCreateGuestVoteToken(): string {
-  if (typeof window === "undefined") return "";
-  try {
-    let token = localStorage.getItem(GUEST_VOTE_TOKEN_KEY);
-    if (!token) {
-      // Generate a random 32-character token
-      token = Array.from(crypto.getRandomValues(new Uint8Array(16)))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
-      localStorage.setItem(GUEST_VOTE_TOKEN_KEY, token);
-    }
-    return token;
-  } catch {
-    return "";
   }
 }
 
@@ -80,6 +63,20 @@ function formatRelativeTime(date: Date): string {
   if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d`;
 
   return date.toLocaleDateString("vi-VN", { day: "numeric", month: "numeric" });
+}
+
+/**
+ * Gets the display name for a comment author.
+ * For guest comments, applies the guest name formatting convention:
+ * - Default "Guest" -> " (Guest)"
+ * - Custom name -> "{name} (Guest)"
+ * For authenticated users, returns authorName as-is.
+ */
+function getCommentDisplayName(comment: Comment): string {
+  if (comment.isGuest) {
+    return formatGuestDisplayName(comment.authorName);
+  }
+  return comment.authorName;
 }
 
 export function PhotoComments({ photoId }: PhotoCommentsProps) {
@@ -117,11 +114,18 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const [content, setContent] = useState("");
   const [guestName, setGuestName] = useState("Guest");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [showGuestInput, setShowGuestInput] = useState(false);
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Guest name modal state (shown on submit for guest users)
+  const [showGuestNameModal, setShowGuestNameModal] = useState(false);
+  const [pendingComment, setPendingComment] = useState<{
+    content: string;
+    image: File | null;
+    parentId?: number;
+  } | null>(null);
 
   useEffect(() => {
     loadComments();
@@ -156,10 +160,19 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   const canDeleteComment = (comment: Comment) => {
     const isAdmin = user?.role === "admin";
     if (isAdmin) return true;
-    if (!comment.isOwner) return false;
+
+    // Check if within 7-day delete window
     const withinWindow =
       Date.now() - new Date(comment.createdAt).getTime() <= DELETE_WINDOW_MS;
-    return withinWindow;
+    if (!withinWindow) return false;
+
+    // For guest comments, check if we have the token
+    if (comment.isGuest) {
+      return Boolean(getGuestToken(comment.id));
+    }
+
+    // For authenticated user comments, check isOwner
+    return Boolean(comment.isOwner);
   };
 
   function handleImageSelect(e: React.ChangeEvent<HTMLInputElement>): void {
@@ -232,10 +245,8 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
       // Load votes for all comments and replies
       if (allCommentIds.length > 0) {
-        // Use guest vote token for anonymous users to see their vote status
-        const guestToken = user ? undefined : getOrCreateGuestVoteToken() || undefined;
         try {
-          const votesData = await getVotesForComments(allCommentIds, guestToken);
+          const votesData = await getVotesForComments(allCommentIds);
           setCommentVotes(votesData);
         } catch (err) {
           console.error("Failed to load votes:", err);
@@ -255,29 +266,70 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     e.preventDefault();
     if (!content.trim() && !selectedImage) return;
 
+    // For guest users, show the name modal first
+    if (!user) {
+      setPendingComment({
+        content,
+        image: selectedImage,
+      });
+      setShowGuestNameModal(true);
+      return;
+    }
+
+    // For authenticated users, submit directly
+    await submitComment(content, selectedImage, undefined);
+  };
+
+  // Actual comment submission logic (called after name confirmation for guests)
+  const submitComment = async (
+    commentContent: string,
+    image: File | null,
+    parentId?: number
+  ) => {
     try {
       setIsSubmitting(true);
       setError(null);
 
       const newComment = await addComment(photoId, {
-        content,
+        content: commentContent,
         guestName: !user ? guestName : undefined,
         isAnonymous: user ? isAnonymous : undefined,
-        image: selectedImage || undefined,
+        image: image || undefined,
+        parentId,
       });
 
       if (newComment.guestToken) {
         persistGuestToken(newComment.id, newComment.guestToken);
       }
 
-      setComments([newComment, ...comments]);
+      if (parentId) {
+        // Add reply to parent comment
+        setComments((prev) =>
+          prev.map((c) => {
+            if (c.id === parentId) {
+              return {
+                ...c,
+                replies: [...(c.replies || []), newComment],
+              };
+            }
+            return c;
+          })
+        );
+        // Clear reply state
+        setReplyContent("");
+        setReplyingTo(null);
+      } else {
+        setComments([newComment, ...comments]);
+      }
+
       setContent("");
       handleRemoveImage();
       if (!user) {
         setGuestName("Guest");
-        setShowGuestInput(false);
       }
       setIsAnonymous(false);
+      setPendingComment(null);
+      setShowGuestNameModal(false);
     } catch (err: any) {
       console.error("Failed to post comment:", err);
       setError(err.message || "Failed to post comment");
@@ -286,12 +338,39 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     }
   };
 
-  const handleDelete = async (commentId: number) => {
+  // Handle guest name confirmation
+  const handleGuestNameConfirm = async () => {
+    if (!pendingComment) return;
+    await submitComment(
+      pendingComment.content,
+      pendingComment.image,
+      pendingComment.parentId
+    );
+  };
+
+  // Handle guest name modal cancel
+  const handleGuestNameCancel = () => {
+    setShowGuestNameModal(false);
+    setPendingComment(null);
+  };
+
+  const handleDelete = async (commentId: number, isGuestComment: boolean = false) => {
     if (!confirm("Are you sure you want to delete this comment?")) return;
 
     try {
-      await deleteComment(photoId, commentId);
-      setComments(comments.filter((c) => c.id !== commentId));
+      // For guest comments, pass the guestToken for authorization
+      const token = isGuestComment ? getGuestToken(commentId) : undefined;
+      await deleteComment(photoId, commentId, token);
+
+      // Remove from top-level comments
+      setComments((prev) =>
+        prev
+          .filter((c) => c.id !== commentId)
+          .map((c) => ({
+            ...c,
+            replies: c.replies?.filter((r) => r.id !== commentId),
+          }))
+      );
     } catch (err: any) {
       console.error("Failed to delete comment:", err);
       alert(err.message || "Failed to delete comment");
@@ -341,16 +420,15 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   };
 
   const handleReaction = async (commentId: number, emoji: ReactionEmoji) => {
-    // Must be logged in or have a guest token
-    const guestToken = getGuestToken(commentId);
-    if (!user && !guestToken) {
+    // Only authenticated users can react
+    if (!user) {
       setError("Please log in to react to comments");
       return;
     }
 
     try {
       setReactingCommentId(commentId);
-      const result = await toggleReaction(commentId, emoji, guestToken);
+      const result = await toggleReaction(commentId, emoji);
 
       setCommentReactions((prev) => ({
         ...prev,
@@ -366,12 +444,15 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
   };
 
   const handleVote = async (commentId: number, voteType: VoteType) => {
-    // Use user auth, or get/create a guest vote token for anonymous voting
-    const guestToken = user ? undefined : getOrCreateGuestVoteToken();
+    // Only authenticated users can vote
+    if (!user) {
+      setError("Please log in to vote on comments");
+      return;
+    }
 
     try {
       setVotingCommentId(commentId);
-      const result = await toggleVote(commentId, voteType, guestToken);
+      const result = await toggleVote(commentId, voteType);
 
       setCommentVotes((prev) => ({
         ...prev,
@@ -400,20 +481,27 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
     e.preventDefault();
     if (!replyContent.trim() || !replyingTo) return;
 
+    // For guest users, show the name modal first
+    if (!user) {
+      setPendingComment({
+        content: replyContent,
+        image: null,
+        parentId: replyingTo.id,
+      });
+      setShowGuestNameModal(true);
+      return;
+    }
+
+    // For authenticated users, submit directly
     try {
       setIsSubmittingReply(true);
       setError(null);
 
       const newReply = await addComment(photoId, {
         content: replyContent,
-        guestName: !user ? guestName : undefined,
-        isAnonymous: user ? isAnonymous : undefined,
+        isAnonymous: isAnonymous,
         parentId: replyingTo.id,
       });
-
-      if (newReply.guestToken) {
-        persistGuestToken(newReply.id, newReply.guestToken);
-      }
 
       // Add the reply to the parent comment's replies array
       setComments((prev) =>
@@ -430,10 +518,6 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
       setReplyContent("");
       setReplyingTo(null);
-      if (!user) {
-        setGuestName("Guest");
-        setShowGuestInput(false);
-      }
       setIsAnonymous(false);
     } catch (err: any) {
       console.error("Failed to post reply:", err);
@@ -487,7 +571,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="text-sm font-semibold text-gray-900">
-                      {comment.authorName}
+                      {getCommentDisplayName(comment)}
                     </span>
                     <span className="text-xs text-gray-500 flex items-center gap-1">
                       {formatRelativeTime(new Date(comment.createdAt))}
@@ -608,7 +692,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                         dislikes: 0,
                         userVote: null,
                       };
-                      const canVote = true; // Anyone can vote (logged in users or guests with auto-generated token)
+                      const canVote = !!user; // Only authenticated users can vote
                       const isVoting = votingCommentId === comment.id;
 
                       return (
@@ -656,7 +740,8 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                       );
                     })()}
 
-                    {/* Reaction button */}
+                    {/* Reaction button - only for authenticated users */}
+                    {user && (
                     <div className="relative">
                       <button
                         onClick={() =>
@@ -666,15 +751,11 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                               : comment.id
                           )
                         }
-                        disabled={!user && !getGuestToken(comment.id)}
                         className={cn(
                           "text-xs font-medium transition-colors cursor-pointer flex items-center gap-1",
                           showReactionPicker === comment.id
                             ? "text-blue-600"
-                            : "text-gray-400 hover:text-blue-600",
-                          !user &&
-                          !getGuestToken(comment.id) &&
-                          "opacity-50 cursor-not-allowed"
+                            : "text-gray-400 hover:text-blue-600"
                         )}
                       >
                         <SmilePlus className="w-3.5 h-3.5" />
@@ -714,6 +795,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                         </>
                       )}
                     </div>
+                    )}
 
                     {/* Reply button - only for top-level comments */}
                     {!comment.parentId && (
@@ -737,7 +819,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
                     {canDeleteComment(comment) && (
                       <button
-                        onClick={() => handleDelete(comment.id)}
+                        onClick={() => handleDelete(comment.id, comment.isGuest)}
                         className="text-xs font-medium text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                       >
                         Delete
@@ -811,7 +893,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
                             <div className="flex-1 min-w-0">
                               <div className="flex items-baseline gap-2">
                                 <span className="text-xs font-semibold text-gray-900">
-                                  {reply.authorName}
+                                  {getCommentDisplayName(reply)}
                                 </span>
                                 <span className="text-[11px] text-gray-500">
                                   {formatRelativeTime(new Date(reply.createdAt))}
@@ -897,26 +979,27 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
                               {/* Reply actions */}
                               <div className="flex items-center gap-2 mt-1">
-                                {/* Like/Dislike for reply */}
+                                {/* Like/Dislike for reply - only for authenticated users */}
                                 {(() => {
                                   const votes = commentVotes[reply.id] || {
                                     likes: 0,
                                     dislikes: 0,
                                     userVote: null,
                                   };
+                                  const canVote = !!user; // Only authenticated users can vote
                                   const isVoting = votingCommentId === reply.id;
 
                                   return (
                                     <div className="flex items-center gap-1.5">
                                       <button
                                         onClick={() => handleVote(reply.id, "like")}
-                                        disabled={isVoting}
+                                        disabled={!canVote || isVoting}
                                         className={cn(
                                           "flex items-center gap-0.5 text-[10px] transition-all cursor-pointer",
                                           votes.userVote === "like"
                                             ? "text-blue-600 font-medium"
                                             : "text-gray-400 hover:text-blue-600",
-                                          isVoting && "opacity-50 cursor-not-allowed"
+                                          (!canVote || isVoting) && "opacity-50 cursor-not-allowed"
                                         )}
                                       >
                                         <ThumbsUp
@@ -930,13 +1013,13 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
                                       <button
                                         onClick={() => handleVote(reply.id, "dislike")}
-                                        disabled={isVoting}
+                                        disabled={!canVote || isVoting}
                                         className={cn(
                                           "flex items-center gap-0.5 text-[10px] transition-all cursor-pointer",
                                           votes.userVote === "dislike"
                                             ? "text-red-600 font-medium"
                                             : "text-gray-400 hover:text-red-600",
-                                          isVoting && "opacity-50 cursor-not-allowed"
+                                          (!canVote || isVoting) && "opacity-50 cursor-not-allowed"
                                         )}
                                       >
                                         <ThumbsDown
@@ -962,7 +1045,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
                                 {canDeleteComment(reply) && (
                                   <button
-                                    onClick={() => handleDelete(reply.id)}
+                                    onClick={() => handleDelete(reply.id, reply.isGuest)}
                                     className="text-[10px] font-medium text-gray-400 hover:text-red-600 transition-colors opacity-0 group-hover:opacity-100 cursor-pointer"
                                   >
                                     Delete
@@ -987,18 +1070,6 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
         {error && (
           <div className="mb-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-600">
             {error}
-          </div>
-        )}
-
-        {!user && showGuestInput && (
-          <div className="mb-2 animate-in fade-in slide-in-from-bottom-2">
-            <input
-              type="text"
-              value={guestName}
-              onChange={(e) => setGuestName(e.target.value)}
-              placeholder="Enter your name..."
-              className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
           </div>
         )}
 
@@ -1037,7 +1108,6 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
             type="text"
             value={content}
             onChange={(e) => setContent(e.target.value)}
-            onFocus={() => !user && setShowGuestInput(true)}
             placeholder={
               user ? "Add a comment..." : "Add a comment as guest..."
             }
@@ -1077,11 +1147,7 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
 
             <button
               type="submit"
-              disabled={
-                isSubmitting ||
-                (!content.trim() && !selectedImage) ||
-                (!user && !guestName.trim())
-              }
+              disabled={isSubmitting || (!content.trim() && !selectedImage)}
               className={cn(
                 "p-2 rounded-full transition-colors cursor-pointer",
                 content.trim() || selectedImage
@@ -1130,6 +1196,57 @@ export function PhotoComments({ photoId }: PhotoCommentsProps) {
           </div>
         )}
       </div>
+
+      {/* Guest Name Modal */}
+      {showGuestNameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={handleGuestNameCancel}
+          />
+          {/* Modal Content */}
+          <div className="relative bg-white rounded-xl shadow-xl p-6 w-[320px] mx-4 animate-in fade-in zoom-in-95">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Enter your name
+            </h3>
+            <input
+              type="text"
+              value={guestName}
+              onChange={(e) => setGuestName(e.target.value)}
+              placeholder="Guest"
+              autoFocus
+              className="w-full px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent mb-4"
+            />
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleGuestNameCancel}
+                className="px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleGuestNameConfirm}
+                disabled={isSubmitting}
+                className={cn(
+                  "px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg transition-colors",
+                  isSubmitting
+                    ? "opacity-50 cursor-not-allowed"
+                    : "hover:bg-blue-700"
+                )}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "OK"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
