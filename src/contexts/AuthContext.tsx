@@ -6,7 +6,7 @@ interface AuthContextType {
   token: string | null;
   loading: boolean;
   login: (username: string, password: string) => Promise<void>;
-  register: (name: string, username: string, password: string) => Promise<void>;
+  register: (name: string, username: string, email: string, password: string) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
@@ -51,11 +51,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.setItem(TOKEN_KEY, response.token);
   };
 
-  const register = async (name: string, username: string, password: string) => {
-    const response = await authApi.register({ name, username, password });
-    setUser(response.user);
-    setToken(response.token);
-    localStorage.setItem(TOKEN_KEY, response.token);
+  const register = async (name: string, username: string, email: string, password: string) => {
+    await authApi.register({ name, username, email, password });
+    // Note: RegisterResponse doesn't include token
+    // User must verify email first via verifyEmail endpoint
   };
 
   const logout = () => {
