@@ -11,6 +11,8 @@ import { BooksPage } from "./pages/books/books.tsx";
 import { BoardPage } from "./pages/board/board.tsx";
 import Login from "./pages/auth/login.tsx";
 import RegisterPage from "./pages/auth/register.tsx";
+import ForgotPassword from "./pages/auth/forgot-password.tsx";
+import ResetPassword from "./pages/auth/reset-password.tsx";
 import { WarehousePage } from "./pages/warehouse/warehouse.tsx";
 import { WarehouseAppsPage } from "./pages/warehouse/apps.tsx";
 import { WarehouseSoftwarePage } from "./pages/warehouse/software.tsx";
@@ -53,6 +55,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                 <Route path="/board" element={<BoardPage />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<RegisterPage />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/warehouse" element={<WarehousePage />} />
                 <Route path="/warehouse/apps" element={<WarehouseAppsPage />} />
                 <Route

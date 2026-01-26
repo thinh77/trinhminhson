@@ -21,6 +21,15 @@ export interface ResendCodeData {
   email: string;
 }
 
+export interface ForgotPasswordData {
+  email: string;
+}
+
+export interface ResetPasswordData {
+  token: string;
+  password: string;
+}
+
 export interface AuthResponse {
   token: string;
   user: {
@@ -73,6 +82,14 @@ export const authApi = {
 
   resendCode: async (data: ResendCodeData) => {
     return api.post<{ message: string }>("/auth/resend-code", data);
+  },
+
+  forgotPassword: async (data: ForgotPasswordData) => {
+    return api.post<{ message: string }>("/auth/forgot-password", data);
+  },
+
+  resetPassword: async (data: ResetPasswordData) => {
+    return api.post<{ message: string }>("/auth/reset-password", data);
   },
 
   verify: async (token: string) => {
