@@ -1,20 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getPhotos } from "@/services/photos.service";
+import { getPhotos, type Photo as ApiPhoto } from "@/services/photos.service";
 import { mapApiPhotoToDisplay, type Photo } from "../types";
 
 const PAGE_SIZE = 3;
 
 interface UseInfinitePhotosReturn {
   photos: Photo[];
+  apiPhotos: ApiPhoto[];
   isLoading: boolean;
   isLoadingMore: boolean;
   hasMore: boolean;
   loadMore: () => void;
   loadAll: () => Promise<void>;
+  refresh: () => Promise<void>;
+  setApiPhotos: React.Dispatch<React.SetStateAction<ApiPhoto[]>>;
   error: string | null;
 }
 
 export function useInfinitePhotos(): UseInfinitePhotosReturn {
+  const [apiPhotos, setApiPhotos] = useState<ApiPhoto[]>([]);
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -23,13 +27,18 @@ export function useInfinitePhotos(): UseInfinitePhotosReturn {
   const offsetRef = useRef(0);
   const allLoadedRef = useRef(false);
 
+  // Sync display photos when apiPhotos changes
+  useEffect(() => {
+    setPhotos(apiPhotos.map(mapApiPhotoToDisplay));
+  }, [apiPhotos]);
+
   useEffect(() => {
     async function loadInitialPhotos(): Promise<void> {
       try {
         setIsLoading(true);
         setError(null);
         const data = await getPhotos({ limit: PAGE_SIZE, offset: 0 });
-        setPhotos(data.map(mapApiPhotoToDisplay));
+        setApiPhotos(data);
         offsetRef.current = data.length;
         setHasMore(data.length === PAGE_SIZE);
       } catch (err) {
@@ -48,9 +57,8 @@ export function useInfinitePhotos(): UseInfinitePhotosReturn {
     try {
       setIsLoadingMore(true);
       const data = await getPhotos({ limit: PAGE_SIZE, offset: offsetRef.current });
-      const newPhotos = data.map(mapApiPhotoToDisplay);
       
-      setPhotos((prev) => [...prev, ...newPhotos]);
+      setApiPhotos((prev) => [...prev, ...data]);
       offsetRef.current += data.length;
       setHasMore(data.length === PAGE_SIZE);
     } catch (err) {
@@ -67,7 +75,7 @@ export function useInfinitePhotos(): UseInfinitePhotosReturn {
     try {
       setIsLoadingMore(true);
       const data = await getPhotos(); // Load all without pagination
-      setPhotos(data.map(mapApiPhotoToDisplay));
+      setApiPhotos(data);
       allLoadedRef.current = true;
       setHasMore(false);
     } catch (err) {
@@ -77,13 +85,28 @@ export function useInfinitePhotos(): UseInfinitePhotosReturn {
     }
   }, [hasMore]);
 
+  // Refresh all photos from server
+  const refresh = useCallback(async () => {
+    try {
+      const data = await getPhotos();
+      setApiPhotos(data);
+      allLoadedRef.current = true;
+      setHasMore(false);
+    } catch (err) {
+      console.error("Failed to refresh photos:", err);
+    }
+  }, []);
+
   return {
     photos,
+    apiPhotos,
     isLoading,
     isLoadingMore,
     hasMore,
     loadMore,
     loadAll,
+    refresh,
+    setApiPhotos,
     error,
   };
 }

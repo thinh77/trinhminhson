@@ -12,9 +12,11 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { getAllCategories, type Category } from "@/services/categories.service";
-import { FilterPanel, PhotoGrid, PhotoLightbox } from "./components";
+import { useAuth } from "@/contexts/AuthContext";
+import { FilterPanel, PhotoGrid, PhotoLightbox, EditPhotoModal, PhotoUploadPanel } from "./components";
 import { usePhotoFilters } from "./hooks/usePhotoFilters";
 import { useInfinitePhotos } from "./hooks/useInfinitePhotos";
+import { usePhotoAdmin } from "./hooks/usePhotoAdmin";
 import type { Photo } from "./types";
 
 export function PhotosPage(): React.ReactElement {
@@ -24,14 +26,23 @@ export function PhotosPage(): React.ReactElement {
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  const { photos, isLoading, isLoadingMore, hasMore, loadMore, loadAll } =
+  const { user } = useAuth();
+  const isAdmin = user?.role === "admin";
+
+  const { photos, apiPhotos, isLoading, isLoadingMore, hasMore, loadMore, loadAll, refresh, setApiPhotos } =
     useInfinitePhotos();
+
+  // Admin photo management
+  const photoAdmin = usePhotoAdmin(apiPhotos, setApiPhotos);
 
   const filters = usePhotoFilters(photos);
 
   // Check if any filter is active
   const hasActiveFilters =
     filters.activeCategories.size > 0 || filters.activeSubcategories.size > 0;
+
+  // Disable drag when filtering
+  const isDragEnabled = isAdmin && !hasActiveFilters;
 
   // Load all photos when filter is applied
   useEffect(() => {
@@ -72,6 +83,18 @@ export function PhotosPage(): React.ReactElement {
     if (currentIndex < filters.filteredPhotos.length - 1) {
       setSelectedPhoto(filters.filteredPhotos[currentIndex + 1]);
     }
+  }
+
+  // Admin handlers that work with display Photo type
+  function handleEditPhoto(photo: Photo): void {
+    const apiPhoto = apiPhotos.find((p) => String(p.id) === photo.id);
+    if (apiPhoto) {
+      photoAdmin.handleEditPhoto(apiPhoto);
+    }
+  }
+
+  function handleDeletePhoto(photoId: string): void {
+    photoAdmin.handleDeletePhoto(photoId);
   }
 
   function handleImageLoad(id: string): void {
@@ -130,6 +153,13 @@ export function PhotosPage(): React.ReactElement {
             onClearAllFilters={filters.clearAllFilters}
           />
 
+          {/* Admin Upload Panel */}
+          {isAdmin && (
+            <div className="mb-8">
+              <PhotoUploadPanel onUploadComplete={refresh} />
+            </div>
+          )}
+
           {isLoading && <LoadingState />}
 
           {!isLoading && filters.filteredPhotos.length === 0 && (
@@ -146,10 +176,28 @@ export function PhotosPage(): React.ReactElement {
               hasMore={!hasActiveFilters && hasMore}
               isLoadingMore={isLoadingMore}
               onLoadMore={loadMore}
+              // Admin props
+              isAdmin={isAdmin}
+              isDragEnabled={isDragEnabled}
+              deletingPhotoId={photoAdmin.deletingPhotoId}
+              onEdit={isAdmin ? handleEditPhoto : undefined}
+              onDelete={isAdmin ? handleDeletePhoto : undefined}
             />
           )}
         </div>
       </main>
+
+      {/* Edit Photo Modal */}
+      {photoAdmin.editingPhoto && (
+        <EditPhotoModal
+          photo={photoAdmin.editingPhoto}
+          form={photoAdmin.editForm}
+          categories={photoAdmin.categories}
+          onFormChange={photoAdmin.setEditForm}
+          onSave={() => photoAdmin.handleSavePhoto(photoAdmin.editingPhoto!.id)}
+          onCancel={photoAdmin.handleCancelEdit}
+        />
+      )}
 
       <PhotoLightbox
         photo={selectedPhoto}
