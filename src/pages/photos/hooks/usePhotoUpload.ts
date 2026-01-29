@@ -69,7 +69,7 @@ export function usePhotoUpload(
 
       if (totalFiles > MAX_FILES) {
         alert(
-          `Chỉ được upload tối đa ${MAX_FILES} ảnh. Bạn đã chọn ${prevForm.files.length} ảnh.`
+          `Maximum ${MAX_FILES} photos allowed. You have already selected ${prevForm.files.length} photos.`
         );
         return prevForm;
       }

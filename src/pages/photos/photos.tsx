@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { getAllCategories, type Category } from "@/services/categories.service";
 import { useAuth } from "@/contexts/AuthContext";
-import { FilterPanel, PhotoGrid, PhotoLightbox, EditPhotoModal, PhotoUploadPanel } from "./components";
+import { FilterPanel, PhotoGrid, PhotoLightbox, EditPhotoModal, AdminToolbar, PhotoUploadModal, CategoryManagementModal } from "./components";
 import { usePhotoFilters } from "./hooks/usePhotoFilters";
 import { useInfinitePhotos } from "./hooks/useInfinitePhotos";
 import { usePhotoAdmin } from "./hooks/usePhotoAdmin";
@@ -25,6 +25,8 @@ export function PhotosPage(): React.ReactElement {
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
 
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
@@ -56,8 +58,8 @@ export function PhotosPage(): React.ReactElement {
       try {
         const categories = await getAllCategories(false);
         setCategoriesData(categories);
-      } catch (error) {
-        console.error("Failed to load categories:", error);
+      } catch {
+        // Categories loading failure is non-critical - filters will show no options
       }
     }
     loadCategories();
@@ -153,10 +155,13 @@ export function PhotosPage(): React.ReactElement {
             onClearAllFilters={filters.clearAllFilters}
           />
 
-          {/* Admin Upload Panel */}
+          {/* Admin Toolbar */}
           {isAdmin && (
             <div className="mb-8">
-              <PhotoUploadPanel onUploadComplete={refresh} />
+              <AdminToolbar
+                onUploadClick={() => setIsUploadModalOpen(true)}
+                onCategoryClick={() => setIsCategoryModalOpen(true)}
+              />
             </div>
           )}
 
@@ -222,6 +227,19 @@ export function PhotosPage(): React.ReactElement {
           }
           filters.toggleSubcategoryFilter(categoryName, subcategoryName);
         }}
+      />
+
+      {/* Admin Modals */}
+      <PhotoUploadModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onUploadComplete={refresh}
+      />
+
+      <CategoryManagementModal
+        isOpen={isCategoryModalOpen}
+        onClose={() => setIsCategoryModalOpen(false)}
+        onCategoriesChange={setCategoriesData}
       />
     </div>
   );

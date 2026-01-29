@@ -5,36 +5,21 @@ import { useConfirm } from "@/hooks/useConfirm";
 import {
   Settings,
   FileText,
-  Image as ImageIcon,
   Plus,
   Users,
-  FolderTree,
 } from "lucide-react";
 import { useBlog } from "@/stores/blog-store";
 import { useAuth } from "@/contexts/AuthContext";
 import { postsApi } from "@/services/posts.service";
 import {
-  uploadPhotos,
-  getPhotos,
-  updatePhoto,
-  deletePhoto,
-  type Photo,
-} from "@/services/photos.service";
-import { CategoryManagement } from "@/components/admin/CategoryManagement";
-import { getAllCategories, type Category } from "@/services/categories.service";
-import {
   Toast,
   PostManagement,
   UserManagement,
   BlogPostForm,
-  SinglePhotoUpload,
-  PhotoGallery,
 } from "./components";
 import type {
   TabType,
   AdminBlogFormData,
-  PhotoFormData,
-  PhotoPreview,
 } from "./types";
 
 export function AdminPage() {
@@ -62,160 +47,13 @@ export function AdminPage() {
     readTime: "5 phút đọc",
   });
 
-  // Photo form state (multiple files)
-  const [photoForm, setPhotoForm] = useState<PhotoFormData>({
-    files: [],
-    categoryIds: [],
-    subcategoryIds: [],
-    date: new Date().toISOString().split("T")[0],
-  });
-
-  // Photo preview URLs
-  const [photoPreviews, setPhotoPreviews] = useState<PhotoPreview[]>([]);
-
-  // Photo management state
-  const [photos, setPhotos] = useState<Photo[]>([]);
-  const [isLoadingPhotos, setIsLoadingPhotos] = useState(false);
-  const [editingPhoto, setEditingPhoto] = useState<Photo | null>(null);
-  const [editPhotoForm, setEditPhotoForm] = useState<{
-    title: string;
-    alt: string;
-    location: string;
-    categoryIds: number[];
-    subcategoryIds: number[];
-    dateTaken: string;
-  }>({
-    title: "",
-    alt: "",
-    location: "",
-    categoryIds: [],
-    subcategoryIds: [],
-    dateTaken: "",
-  });
-  const [deletingPhotoId, setDeletingPhotoId] = useState<number | null>(null);
-  const [photoSearchQuery, setPhotoSearchQuery] = useState("");
-
-  // Categories state for photo upload
-  const [categoriesData, setCategoriesData] = useState<Category[]>([]);
-
   // Form errors
   const [blogErrors, setBlogErrors] = useState<Partial<AdminBlogFormData>>({});
-  const [photoErrors, setPhotoErrors] = useState<
-    Partial<Record<string, string>>
-  >({});
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoaded(true), 100);
     return () => clearTimeout(timer);
   }, []);
-
-  // Load photos when switching to photos tab
-  useEffect(() => {
-    if (activeTab === "photos") {
-      loadPhotos();
-      loadCategoriesData();
-    }
-  }, [activeTab]);
-
-  // Load categories data for dropdowns
-  const loadCategoriesData = async () => {
-    try {
-      const data = await getAllCategories(false);
-      setCategoriesData(data);
-    } catch (error) {
-      console.error("Failed to load categories:", error);
-    }
-  };
-
-  // Load photos function
-  const loadPhotos = async () => {
-    setIsLoadingPhotos(true);
-    try {
-      const data = await getPhotos();
-      setPhotos(data);
-    } catch (error) {
-      console.error("Failed to load photos:", error);
-      setToast({ message: "Failed to load photos", type: "error" });
-    } finally {
-      setIsLoadingPhotos(false);
-    }
-  };
-
-  // Handle delete photo
-  const handleDeletePhoto = async (photoId: number) => {
-    const confirmed = await confirm({
-      title: "Xóa ảnh",
-      message: "Bạn có chắc muốn xóa ảnh này?",
-      confirmText: "Xóa",
-      cancelText: "Hủy",
-      type: "danger",
-    });
-    if (!confirmed) return;
-
-    setDeletingPhotoId(photoId);
-    try {
-      await deletePhoto(photoId);
-      setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-      setToast({ message: "Photo deleted successfully!", type: "success" });
-    } catch (error) {
-      console.error("Failed to delete photo:", error);
-      setToast({ message: "Failed to delete photo", type: "error" });
-    } finally {
-      setDeletingPhotoId(null);
-    }
-  };
-
-  // Handle edit photo
-  const handleEditPhoto = (photo: Photo) => {
-    // Get category IDs from photo's categories
-    const categoryIds = photo.categories?.map((cat) => cat.id) || [];
-
-    // Get subcategory IDs from photo's subcategories
-    const subcategoryIds = photo.subcategories?.map((sub) => sub.id) || [];
-
-    setEditPhotoForm({
-      title: photo.title || "",
-      alt: photo.alt || "",
-      location: photo.location || "",
-      categoryIds,
-      subcategoryIds,
-      dateTaken: photo.date_taken ? photo.date_taken.split("T")[0] : "",
-    });
-    setEditingPhoto(photo);
-  };
-
-  // Handle save edited photo
-  const handleSavePhoto = async (photoId: number) => {
-    try {
-      const updatedPhoto = await updatePhoto(photoId, {
-        title: editPhotoForm.title,
-        alt: editPhotoForm.alt,
-        location: editPhotoForm.location || undefined,
-        categoryIds:
-          editPhotoForm.categoryIds.length > 0
-            ? editPhotoForm.categoryIds
-            : undefined,
-        subcategoryIds:
-          editPhotoForm.subcategoryIds.length > 0
-            ? editPhotoForm.subcategoryIds
-            : undefined,
-        dateTaken: editPhotoForm.dateTaken || undefined,
-      });
-      setPhotos((prev) =>
-        prev.map((p) => (p.id === photoId ? updatedPhoto : p))
-      );
-      setEditingPhoto(null);
-      setToast({ message: "Photo updated successfully!", type: "success" });
-    } catch (error) {
-      console.error("Failed to update photo:", error);
-      setToast({ message: "Failed to update photo", type: "error" });
-    }
-  };
-
-  // Handle cancel edit photo
-  const handleCancelEditPhoto = () => {
-    setEditingPhoto(null);
-  };
 
   // Validate blog form
   const validateBlogForm = (): boolean => {
@@ -238,37 +76,6 @@ export function AdminPage() {
     }
 
     setBlogErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Validate photo form
-  const validatePhotoForm = (): boolean => {
-    const errors: Partial<Record<string, string>> = {};
-
-    if (photoForm.files.length === 0) {
-      errors.files = "At least one image file is required";
-    } else if (photoForm.files.length > 10) {
-      errors.files = "Maximum 10 files allowed";
-    } else {
-      const MAX_SIZE = 15 * 1024 * 1024; // 15MB in bytes
-      const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png"];
-
-      for (const file of photoForm.files) {
-        if (!ALLOWED_TYPES.includes(file.type)) {
-          errors.files = "Only JPG and PNG images are allowed";
-          break;
-        }
-        if (file.size > MAX_SIZE) {
-          errors.files = "Each image must be less than 15MB";
-          break;
-        }
-      }
-    }
-    if (!photoForm.categoryIds || photoForm.categoryIds.length === 0) {
-      errors.categoryIds = "At least one category is required";
-    }
-
-    setPhotoErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
@@ -346,87 +153,6 @@ export function AdminPage() {
     }
   };
 
-  // Handle photo form submission
-  const handlePhotoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!validatePhotoForm()) {
-      setToast({
-        message: "Please fill in all required fields",
-        type: "error",
-      });
-      return;
-    }
-
-    if (photoForm.files.length === 0) {
-      setToast({
-        message: "Please select at least one image file",
-        type: "error",
-      });
-      return;
-    }
-
-    if (!photoForm.categoryIds || photoForm.categoryIds.length === 0) {
-      setToast({
-        message: "Please select at least one category",
-        type: "error",
-      });
-      return;
-    }
-
-    setIsSubmitting(true);
-    try {
-      const result = await uploadPhotos(photoForm.files, {
-        categoryIds: photoForm.categoryIds,
-        subcategoryIds:
-          photoForm.subcategoryIds.length > 0
-            ? photoForm.subcategoryIds
-            : undefined,
-        dateTaken: photoForm.date,
-        isPublic: true,
-      });
-
-      // Clear previews URLs to free memory
-      photoPreviews.forEach((preview) => URL.revokeObjectURL(preview.url));
-
-      setPhotoForm({
-        files: [],
-        categoryIds: [],
-        subcategoryIds: [],
-        date: new Date().toISOString().split("T")[0],
-      });
-      setPhotoPreviews([]);
-      setPhotoErrors({});
-
-      await loadPhotos();
-
-      if (result.errors && result.errors.length > 0) {
-        setToast({
-          message: `Uploaded ${result.uploaded.length} of ${result.total} photos. ${result.errors.length} failed.`,
-          type: result.uploaded.length > 0 ? "success" : "error",
-        });
-      } else {
-        setToast({
-          message: `${result.uploaded.length} photo${
-            result.uploaded.length !== 1 ? "s" : ""
-          } uploaded successfully!`,
-          type: "success",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to upload photos:", error);
-      setToast({
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to upload photos. Please try again.",
-        type: "error",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   // Handle edit post
   const handleEditPost = (postId: string) => {
     const post = posts.find((p) => p.id === postId);
@@ -486,8 +212,6 @@ export function AdminPage() {
     { id: "posts" as const, label: "Post Management", icon: FileText },
     { id: "users" as const, label: "User Management", icon: Users },
     { id: "create-post" as const, label: "Create Post", icon: Plus },
-    { id: "photos" as const, label: "Photo Gallery", icon: ImageIcon },
-    { id: "categories" as const, label: "Categories", icon: FolderTree },
   ];
 
   return (
@@ -611,58 +335,6 @@ export function AdminPage() {
               />
             )}
 
-            {activeTab === "photos" && (
-              <>
-                <SinglePhotoUpload
-                  form={photoForm}
-                  errors={photoErrors}
-                  previews={photoPreviews}
-                  isSubmitting={isSubmitting}
-                  categories={categoriesData}
-                  onFormChange={setPhotoForm}
-                  onPreviewsChange={setPhotoPreviews}
-                  onSubmit={handlePhotoSubmit}
-                  onClear={() => {
-                    // Clear preview URLs to free memory
-                    photoPreviews.forEach((preview) =>
-                      URL.revokeObjectURL(preview.url)
-                    );
-                    setPhotoForm({
-                      files: [],
-                      categoryIds: [],
-                      subcategoryIds: [],
-                      date: new Date().toISOString().split("T")[0],
-                    });
-                    setPhotoPreviews([]);
-                    setPhotoErrors({});
-                  }}
-                />
-
-                <PhotoGallery
-                  photos={photos}
-                  isLoading={isLoadingPhotos}
-                  searchQuery={photoSearchQuery}
-                  editingPhoto={editingPhoto}
-                  editForm={editPhotoForm}
-                  categories={categoriesData}
-                  deletingPhotoId={deletingPhotoId}
-                  onSearchChange={setPhotoSearchQuery}
-                  onEdit={handleEditPhoto}
-                  onDelete={handleDeletePhoto}
-                  onSave={handleSavePhoto}
-                  onCancelEdit={handleCancelEditPhoto}
-                  onEditFormChange={setEditPhotoForm}
-                  onPhotosReordered={loadPhotos}
-                />
-              </>
-            )}
-
-            {/* Categories Management */}
-            {activeTab === "categories" && (
-              <CategoryManagement
-                onToast={(message, type) => setToast({ message, type })}
-              />
-            )}
           </div>
         </div>
       </main>

@@ -38,7 +38,7 @@ export interface EditPhotoFormData {
   dateTaken: string;
 }
 
-export type TabType = "posts" | "users" | "create-post" | "photos" | "categories";
+export type TabType = "posts" | "users" | "create-post";
 
 export interface ToastState {
   message: string;

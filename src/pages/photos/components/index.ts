@@ -3,3 +3,7 @@ export { PhotoGrid } from "./PhotoGrid";
 export { PhotoLightbox } from "./PhotoLightbox";
 export { EditPhotoModal } from "./EditPhotoModal";
 export { PhotoUploadPanel } from "./PhotoUploadPanel";
+export { CategoryManagement } from "./CategoryManagement";
+export { AdminToolbar } from "./AdminToolbar";
+export { PhotoUploadModal } from "./PhotoUploadModal";
+export { CategoryManagementModal } from "./CategoryManagementModal";
