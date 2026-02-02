@@ -96,6 +96,42 @@ export function PhotosPage(): React.ReactElement {
     setLoadedImages((prev) => new Set(prev).add(id));
   }
 
+  // Handle drag-drop reorder - SWAP behavior
+  async function handleReorder(fromId: string, toId: string): Promise<void> {
+    const fromIndex = apiPhotos.findIndex((p) => String(p.id) === fromId);
+    const toIndex = apiPhotos.findIndex((p) => String(p.id) === toId);
+
+    if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
+
+    // Create new array with swapped photos
+    const reorderedPhotos = [...apiPhotos];
+    [reorderedPhotos[fromIndex], reorderedPhotos[toIndex]] = 
+      [reorderedPhotos[toIndex], reorderedPhotos[fromIndex]];
+
+    // Update display_order for all photos
+    const newOrder = reorderedPhotos.map((photo, index) => ({
+      id: photo.id,
+      displayOrder: index,
+    }));
+
+    // Optimistic update
+    const originalPhotos = apiPhotos;
+    setApiPhotos(reorderedPhotos);
+
+    // Call API
+    const success = await photoAdmin.handleReorderPhotos(newOrder);
+
+    if (success) {
+      // TODO: Add toast notification: "Photos reordered successfully"
+      console.log("Photos reordered successfully");
+    } else {
+      // Rollback on failure
+      setApiPhotos(originalPhotos);
+      // TODO: Add toast notification: "Failed to reorder photos. Please try again."
+      console.error("Failed to reorder photos");
+    }
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navbar className="fixed top-0 left-0 right-0 z-50 shadow-lg shadow-black/5" />
@@ -178,6 +214,7 @@ export function PhotosPage(): React.ReactElement {
                 deletingPhotoId={photoAdmin.deletingPhotoId}
                 onEdit={isAdmin ? handleEditPhoto : undefined}
                 onDelete={isAdmin ? handleDeletePhoto : undefined}
+                onReorder={isDragEnabled ? handleReorder : undefined}
               />
 
               {/* Pagination - only show when not filtering */}
