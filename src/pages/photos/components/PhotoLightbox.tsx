@@ -12,7 +12,6 @@ interface PhotoLightboxProps {
   onClose: () => void;
   onPrevious: () => void;
   onNext: () => void;
-  onCategoryClick: (categoryName: string, categoryId: number) => void;
   onSubcategoryClick: (categoryName: string, subcategoryName: string) => void;
 }
 
@@ -23,7 +22,6 @@ export function PhotoLightbox({
   onClose,
   onPrevious,
   onNext,
-  onCategoryClick,
   onSubcategoryClick,
 }: PhotoLightboxProps): React.ReactElement {
   const currentIndex = photo ? photos.findIndex((p) => p.id === photo.id) : -1;
@@ -33,18 +31,15 @@ export function PhotoLightbox({
     if (e.key === "ArrowRight") onNext();
   }
 
-  function handleCategoryClick(categoryName: string): void {
-    const category = categoriesData.find((c) => c.name === categoryName);
-    if (category) {
-      onCategoryClick(categoryName, category.id);
-    }
-  }
-
-  function handleSubcategoryClick(
-    categoryName: string,
-    subcategoryName: string
-  ): void {
-    onSubcategoryClick(categoryName, subcategoryName);
+  function findParentCategory(subcategoryName: string): string | null {
+    return (
+      photo?.categories?.find((cat) => {
+        const categoryData = categoriesData.find((c) => c.name === cat);
+        return categoryData?.subcategories.some((s) => s.name === subcategoryName);
+      }) ||
+      photo?.categories?.[0] ||
+      null
+    );
   }
 
   if (!photo) return <></>;
@@ -106,34 +101,15 @@ export function PhotoLightbox({
             <h2 className="text-base font-semibold leading-tight text-gray-900 mb-2">
               {photo.title}
             </h2>
-            {photo.categories && photo.categories.length > 0 && (
+            {photo.subcategories && photo.subcategories.length > 0 && (
               <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs font-medium">
-                {photo.categories.map((cat) => (
-                  <button
-                    key={cat}
-                    onClick={() => handleCategoryClick(cat)}
-                    className="text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
-                  >
-                    #{cat}
-                  </button>
-                ))}
-                {photo.subcategories?.map((sub) => {
-                  // Find which category this subcategory belongs to
-                  const parentCategory =
-                    photo.categories.find((cat) => {
-                      const categoryData = categoriesData.find(
-                        (c) => c.name === cat
-                      );
-                      return categoryData?.subcategories.some(
-                        (s) => s.name === sub
-                      );
-                    }) || photo.categories[0];
+                {photo.subcategories.map((sub) => {
+                  const parentCategory = findParentCategory(sub);
+                  if (!parentCategory) return null;
                   return (
                     <button
                       key={sub}
-                      onClick={() =>
-                        handleSubcategoryClick(parentCategory, sub)
-                      }
+                      onClick={() => onSubcategoryClick(parentCategory, sub)}
                       className="text-blue-600 hover:text-blue-800 hover:underline transition-colors cursor-pointer"
                     >
                       #{sub}

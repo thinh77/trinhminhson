@@ -250,10 +250,6 @@ export function PhotosPage(): React.ReactElement {
         onClose={() => setSelectedPhoto(null)}
         onPrevious={handlePrevious}
         onNext={handleNext}
-        onCategoryClick={(categoryName, categoryId) => {
-          setSelectedPhoto(null);
-          filters.toggleCategoryFilter(categoryName, categoryId);
-        }}
         onSubcategoryClick={(categoryName, subcategoryName) => {
           setSelectedPhoto(null);
           if (!filters.activeCategories.has(categoryName)) {
