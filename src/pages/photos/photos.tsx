@@ -18,6 +18,7 @@ import { usePhotoFilters } from "./hooks/usePhotoFilters";
 import { usePaginatedPhotos } from "./hooks/usePaginatedPhotos";
 import { usePhotoAdmin } from "./hooks/usePhotoAdmin";
 import type { Photo } from "./types";
+import { reorderByInsert } from "./utils/reorderPhotos";
 
 export function PhotosPage(): React.ReactElement {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -96,17 +97,15 @@ export function PhotosPage(): React.ReactElement {
     setLoadedImages((prev) => new Set(prev).add(id));
   }
 
-  // Handle drag-drop reorder - SWAP behavior
+  // Handle drag-drop reorder - INSERT behavior
   async function handleReorder(fromId: string, toId: string): Promise<void> {
     const fromIndex = apiPhotos.findIndex((p) => String(p.id) === fromId);
     const toIndex = apiPhotos.findIndex((p) => String(p.id) === toId);
 
     if (fromIndex === -1 || toIndex === -1 || fromIndex === toIndex) return;
 
-    // Create new array with swapped photos
-    const reorderedPhotos = [...apiPhotos];
-    [reorderedPhotos[fromIndex], reorderedPhotos[toIndex]] = 
-      [reorderedPhotos[toIndex], reorderedPhotos[fromIndex]];
+    // Create new array with inserted photo (not swap)
+    const reorderedPhotos = reorderByInsert(apiPhotos, fromIndex, toIndex);
 
     // Update display_order for all photos
     const newOrder = reorderedPhotos.map((photo, index) => ({
