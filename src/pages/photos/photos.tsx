@@ -13,9 +13,9 @@ import {
 } from "lucide-react";
 import { getAllCategories, type Category } from "@/services/categories.service";
 import { useAuth } from "@/contexts/AuthContext";
-import { FilterPanel, PhotoGrid, PhotoLightbox, EditPhotoModal, AdminToolbar, PhotoUploadModal, CategoryManagementModal } from "./components";
+import { FilterPanel, PhotoGrid, PhotoLightbox, EditPhotoModal, AdminToolbar, PhotoUploadModal, CategoryManagementModal, Pagination } from "./components";
 import { usePhotoFilters } from "./hooks/usePhotoFilters";
-import { useInfinitePhotos } from "./hooks/useInfinitePhotos";
+import { usePaginatedPhotos } from "./hooks/usePaginatedPhotos";
 import { usePhotoAdmin } from "./hooks/usePhotoAdmin";
 import type { Photo } from "./types";
 
@@ -31,8 +31,8 @@ export function PhotosPage(): React.ReactElement {
   const { user } = useAuth();
   const isAdmin = user?.role === "admin";
 
-  const { photos, apiPhotos, isLoading, isLoadingMore, hasMore, loadMore, loadAll, refresh, setApiPhotos } =
-    useInfinitePhotos();
+  const { photos, apiPhotos, isLoading, pagination, goToPage, nextPage, prevPage, refresh, setApiPhotos } =
+    usePaginatedPhotos();
 
   // Admin photo management
   const photoAdmin = usePhotoAdmin(apiPhotos, setApiPhotos);
@@ -45,13 +45,6 @@ export function PhotosPage(): React.ReactElement {
 
   // Disable drag when filtering
   const isDragEnabled = isAdmin && !hasActiveFilters;
-
-  // Load all photos when filter is applied
-  useEffect(() => {
-    if (hasActiveFilters && hasMore) {
-      loadAll();
-    }
-  }, [hasActiveFilters, hasMore, loadAll]);
 
   useEffect(() => {
     async function loadCategories(): Promise<void> {
@@ -172,22 +165,32 @@ export function PhotosPage(): React.ReactElement {
           )}
 
           {!isLoading && filters.filteredPhotos.length > 0 && (
-            <PhotoGrid
-              photos={filters.filteredPhotos}
-              isLoaded={isLoaded}
-              loadedImages={loadedImages}
-              onImageLoad={handleImageLoad}
-              onPhotoSelect={setSelectedPhoto}
-              hasMore={!hasActiveFilters && hasMore}
-              isLoadingMore={isLoadingMore}
-              onLoadMore={loadMore}
-              // Admin props
-              isAdmin={isAdmin}
-              isDragEnabled={isDragEnabled}
-              deletingPhotoId={photoAdmin.deletingPhotoId}
-              onEdit={isAdmin ? handleEditPhoto : undefined}
-              onDelete={isAdmin ? handleDeletePhoto : undefined}
-            />
+            <>
+              <PhotoGrid
+                photos={filters.filteredPhotos}
+                isLoaded={isLoaded}
+                loadedImages={loadedImages}
+                onImageLoad={handleImageLoad}
+                onPhotoSelect={setSelectedPhoto}
+                // Admin props
+                isAdmin={isAdmin}
+                isDragEnabled={isDragEnabled}
+                deletingPhotoId={photoAdmin.deletingPhotoId}
+                onEdit={isAdmin ? handleEditPhoto : undefined}
+                onDelete={isAdmin ? handleDeletePhoto : undefined}
+              />
+
+              {/* Pagination - only show when not filtering */}
+              {!hasActiveFilters && (
+                <Pagination
+                  pagination={pagination}
+                  onPageChange={goToPage}
+                  onNextPage={nextPage}
+                  onPrevPage={prevPage}
+                  isLoading={isLoading}
+                />
+              )}
+            </>
           )}
         </div>
       </main>

@@ -99,8 +99,9 @@ export function PhotoGrid({
   return (
     <>
       <div
+        data-testid="photo-grid"
         className={cn(
-          "columns-1 sm:columns-2 lg:columns-3 gap-4 space-y-4",
+          "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4",
           "transition-all duration-700 delay-150 ease-out",
           isLoaded ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         )}
@@ -209,13 +210,6 @@ function PhotoCard({
     }
   }
 
-  const aspectClass =
-    photo.aspectRatio === "portrait"
-      ? "aspect-[3/4]"
-      : photo.aspectRatio === "square"
-      ? "aspect-square"
-      : "aspect-video";
-
   return (
     <div
       ref={cardRef}
@@ -227,7 +221,7 @@ function PhotoCard({
       onDrop={onDrop}
       onDragEnd={onDragEnd}
       className={cn(
-        "break-inside-avoid group relative",
+        "aspect-3/2 group relative",
         "rounded-xl overflow-hidden",
         "bg-secondary/30 cursor-pointer",
         "transition-all duration-300 ease-out",
@@ -255,10 +249,7 @@ function PhotoCard({
 
       {!isLoaded && (
         <div
-          className={cn(
-            "absolute inset-0 bg-secondary animate-pulse",
-            aspectClass
-          )}
+          className="absolute inset-0 bg-secondary animate-pulse"
         />
       )}
 
@@ -270,14 +261,14 @@ function PhotoCard({
           onLoad={onImageLoad}
           draggable={false}
           className={cn(
-            "w-full h-auto object-cover",
+            "absolute inset-0 w-full h-full object-cover",
             "transition-all duration-500 ease-out",
             "group-hover:scale-105",
             isLoaded ? "opacity-100" : "opacity-0"
           )}
         />
       ) : (
-        <div className={cn("w-full bg-secondary/50", aspectClass)} />
+        <div className="absolute inset-0 bg-secondary/50" />
       )}
 
       <div

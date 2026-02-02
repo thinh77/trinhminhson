@@ -50,13 +50,31 @@ export function SinglePhotoUpload({
     if (!fileList) return;
 
     const newFiles = Array.from(fileList);
-    const totalFiles = form.files.length + newFiles.length;
+
+    // Determine if we should replace or append
+    // Single file selection should replace existing files
+    // Multiple file selection should append
+    const shouldReplace = newFiles.length === 1 && form.files.length > 0;
+
+    const existingFiles = shouldReplace ? [] : form.files;
+    const existingPreviews = shouldReplace ? [] : previews;
+
+    const totalFiles = existingFiles.length + newFiles.length;
 
     if (totalFiles > MAX_FILES) {
       alert(
-        `Chỉ được upload tối đa ${MAX_FILES} ảnh. Bạn đã chọn ${form.files.length} ảnh.`
+        `Chỉ được upload tối đa ${MAX_FILES} ảnh. Bạn đã chọn ${existingFiles.length} ảnh.`
       );
       return;
+    }
+
+    // Revoke URLs for replaced previews to free memory
+    if (shouldReplace) {
+      previews.forEach((preview) => {
+        if (preview.url) {
+          URL.revokeObjectURL(preview.url);
+        }
+      });
     }
 
     // Create previews for new files
@@ -66,8 +84,8 @@ export function SinglePhotoUpload({
       title: file.name.replace(/\.[^/.]+$/, ""), // Auto-generate title from filename
     }));
 
-    onFormChange({ ...form, files: [...form.files, ...newFiles] });
-    onPreviewsChange([...previews, ...newPreviews]);
+    onFormChange({ ...form, files: [...existingFiles, ...newFiles] });
+    onPreviewsChange([...existingPreviews, ...newPreviews]);
   }
 
   function handleRemoveFile(index: number): void {

@@ -7,3 +7,4 @@ export { CategoryManagement } from "./CategoryManagement";
 export { AdminToolbar } from "./AdminToolbar";
 export { PhotoUploadModal } from "./PhotoUploadModal";
 export { CategoryManagementModal } from "./CategoryManagementModal";
+export { Pagination } from "./Pagination";

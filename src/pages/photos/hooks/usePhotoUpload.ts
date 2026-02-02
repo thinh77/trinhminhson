@@ -59,11 +59,49 @@ export function usePhotoUpload(
     loadCategories();
   }, []);
 
+  // Sync previews with form.files - prevents duplicates and ensures consistency
+  useEffect(() => {
+    setPreviews((currentPreviews) => {
+      const formFileSet = new Set(form.files);
+
+      // Keep only previews whose files are still in form.files
+      const validPreviews = currentPreviews.filter((p) => formFileSet.has(p.file));
+
+      // Find files that need new previews
+      const existingPreviewFiles = new Set(validPreviews.map((p) => p.file));
+      const newFiles = form.files.filter((f) => !existingPreviewFiles.has(f));
+
+      // Create previews for new files only
+      const newPreviews: PhotoPreview[] = newFiles.map((file) => ({
+        file,
+        url: URL.createObjectURL(file),
+        title: file.name.replace(/\.[^/.]+$/, ""),
+      }));
+
+      // Revoke URLs for removed previews to free memory
+      const removedPreviews = currentPreviews.filter(
+        (p) => !formFileSet.has(p.file)
+      );
+      removedPreviews.forEach((p) => URL.revokeObjectURL(p.url));
+
+      // Only update if there are actual changes
+      if (
+        newFiles.length === 0 &&
+        removedPreviews.length === 0 &&
+        validPreviews.length === currentPreviews.length
+      ) {
+        return currentPreviews;
+      }
+
+      return [...validPreviews, ...newPreviews];
+    });
+  }, [form.files]);
+
   const handleFilesChange = useCallback((fileList: FileList | null) => {
     if (!fileList) return;
 
     const newFiles = Array.from(fileList);
-    
+
     setForm((prevForm) => {
       const totalFiles = prevForm.files.length + newFiles.length;
 
@@ -74,27 +112,12 @@ export function usePhotoUpload(
         return prevForm;
       }
 
-      // Create previews for new files
-      const newPreviews: PhotoPreview[] = newFiles.map((file) => ({
-        file,
-        url: URL.createObjectURL(file),
-        title: file.name.replace(/\.[^/.]+$/, ""),
-      }));
-
-      setPreviews((prev) => [...prev, ...newPreviews]);
-
       return { ...prevForm, files: [...prevForm.files, ...newFiles] };
     });
   }, []);
 
   const handleRemoveFile = useCallback((index: number) => {
-    setPreviews((prev) => {
-      if (prev[index]?.url) {
-        URL.revokeObjectURL(prev[index].url);
-      }
-      return prev.filter((_, i) => i !== index);
-    });
-
+    // Only update form.files - previews will be synced automatically via useEffect
     setForm((prev) => ({
       ...prev,
       files: prev.files.filter((_, i) => i !== index),
