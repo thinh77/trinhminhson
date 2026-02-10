@@ -29,24 +29,48 @@ export function usePhotoFilters(photos: Photo[]): UsePhotoFiltersReturn {
     return photos.filter((p) => {
       if (activeCategories.size === 0) return true;
 
-      // Check if photo has any of the selected categories
       const categoryMatch = p.categories.some((cat) => activeCategories.has(cat));
       if (!categoryMatch) return false;
 
       if (activeSubcategories.size > 0) {
-        // Check if photo has matching subcategories
-        const hasMatchingSubcategory = p.categories.some((cat) =>
-          p.subcategories.some((sub) => activeSubcategories.has(`${cat}:${sub}`))
-        );
-        
-        // Check if any of photo's categories have selected subcategories
-        const categoryHasSelectedSubs = p.categories.some((cat) =>
-          Array.from(activeSubcategories).some((sub) => sub.startsWith(`${cat}:`))
-        );
-        
-        if (categoryHasSelectedSubs) {
-          return hasMatchingSubcategory;
+        const subsArray = Array.from(activeSubcategories);
+
+        // Group selected subcategories by their parent category
+        const subsByCategory = new Map<string, string[]>();
+        for (const sub of subsArray) {
+          const [cat, subName] = sub.split(":");
+          const existing = subsByCategory.get(cat) || [];
+          subsByCategory.set(cat, [...existing, subName]);
         }
+
+        // Categories that have subcategory filters
+        const categoriesWithSubs = new Set(subsByCategory.keys());
+
+        // Check which active categories the photo belongs to
+        const photoActiveCategories = p.categories.filter((cat) =>
+          activeCategories.has(cat)
+        );
+
+        // Photo must satisfy subcategory filters for each of its categories
+        // that have selected subcategories (intersection logic)
+        const hasSubFilteredCategory = photoActiveCategories.some((cat) =>
+          categoriesWithSubs.has(cat)
+        );
+
+        if (hasSubFilteredCategory) {
+          // For each of photo's categories that have sub filters,
+          // photo must have ALL selected subcategories (intersection)
+          return photoActiveCategories.every((cat) => {
+            const requiredSubs = subsByCategory.get(cat);
+            if (!requiredSubs) return true; // no sub filter for this category
+            return requiredSubs.every((subName) =>
+              p.subcategories.includes(subName)
+            );
+          });
+        }
+
+        // Photo only belongs to categories without sub filters - show it
+        return true;
       }
 
       return true;
