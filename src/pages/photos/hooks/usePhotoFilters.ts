@@ -34,6 +34,17 @@ export function usePhotoFilters(photos: Photo[]): UsePhotoFiltersReturn {
 
       if (activeSubcategories.size > 0) {
         const subsArray = Array.from(activeSubcategories);
+        const selectedSubcategoryNames: string[] = [];
+        for (const sub of subsArray) {
+          const [, subName] = sub.split(":");
+          if (subName) selectedSubcategoryNames.push(subName);
+        }
+
+        if (selectedSubcategoryNames.length > 1) {
+          return selectedSubcategoryNames.every((subName) =>
+            p.subcategories.includes(subName)
+          );
+        }
 
         // Group selected subcategories by their parent category
         const subsByCategory = new Map<string, string[]>();

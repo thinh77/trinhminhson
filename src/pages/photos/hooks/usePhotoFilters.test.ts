@@ -86,7 +86,7 @@ describe("usePhotoFilters", () => {
     expect(result.current.filteredPhotos.map((p) => p.id)).toEqual(["1"]);
   });
 
-  it("uses per-category intersection across categories", () => {
+  it("requires intersection for selected subcategories across categories", () => {
     const { result } = renderHook(() => usePhotoFilters(photos));
 
     act(() => {
@@ -102,17 +102,9 @@ describe("usePhotoFilters", () => {
       result.current.toggleSubcategoryFilter("Nature", "Forest");
     });
 
-    // Per-category intersection:
-    // - Travel photos must have Beach: photo 1 (Travel+Beach), 2 (Travel+Beach), 4 (Travel+Beach)
-    // - Nature photos must have Forest: photo 4 (Nature+Forest), 5 (Nature+Forest)
-    // - Photo 4 belongs to both Travel and Nature, must satisfy both: Beach AND Forest -> passes
-    // Combined: 1, 2, 4, 5
-    expect(result.current.filteredPhotos.map((p) => p.id)).toEqual([
-      "1",
-      "2",
-      "4",
-      "5",
-    ]);
+    // Selected subcategories from different categories should still use AND logic:
+    // only photo 4 has BOTH Beach and Forest.
+    expect(result.current.filteredPhotos.map((p) => p.id)).toEqual(["4"]);
   });
 
   it("clears all filters", () => {
