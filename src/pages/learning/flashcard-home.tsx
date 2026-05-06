@@ -191,10 +191,11 @@ function getFaceOptions(faceCount: number) {
 }
 
 export function JapaneseFlashcardHome() {
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const { showToast } = useToast();
   // Wait for auth to settle before determining guest status
   const isGuest = !authLoading && !isAuthenticated;
+  const isAdmin = user?.role === "admin";
 
   // Initialize activeTab based on auth state, but only after auth loading completes
   const [activeTab, setActiveTab] = useState<"personal" | "community">(
@@ -452,6 +453,22 @@ export function JapaneseFlashcardHome() {
           >
             <PlusIcon />
             <span>Thêm bộ từ vựng mới</span>
+          </Link>
+        )}
+
+        {/* Create Test Button - Admin only, with at least 1 personal set */}
+        {!authLoading && !isGuest && isAdmin && activeTab === "personal" && sets.length > 0 && (
+          <Link
+            to="/learning/test-create"
+            className="group flex items-center justify-center gap-3 w-full py-4 px-6 mb-8
+                       bg-gradient-to-r from-orange-500 to-amber-500
+                       hover:from-orange-600 hover:to-amber-600
+                       text-white font-semibold rounded-2xl
+                       shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40
+                       transform hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+          >
+            <span className="text-xl" aria-hidden>📝</span>
+            <span>Tạo bài test từ từ khó</span>
           </Link>
         )}
 

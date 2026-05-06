@@ -4,6 +4,8 @@
  * Modal overlay with backdrop blur
  */
 
+import { useState } from "react";
+
 export interface ConfirmDialogProps {
   isOpen: boolean;
   title: string;
@@ -11,7 +13,11 @@ export interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   type?: "danger" | "warning" | "info";
-  onConfirm: () => void;
+  extraCheckbox?: {
+    label: string;
+    defaultChecked?: boolean;
+  };
+  onConfirm: (checkboxValue?: boolean) => void;
   onCancel: () => void;
 }
 
@@ -22,9 +28,21 @@ const ConfirmDialog = ({
   confirmText = "Xác nhận",
   cancelText = "Hủy",
   type = "danger",
+  extraCheckbox,
   onConfirm,
   onCancel,
 }: ConfirmDialogProps) => {
+  const [checked, setChecked] = useState<boolean>(
+    extraCheckbox?.defaultChecked ?? false
+  );
+  const [prevIsOpen, setPrevIsOpen] = useState(isOpen);
+  if (prevIsOpen !== isOpen) {
+    setPrevIsOpen(isOpen);
+    if (isOpen) {
+      setChecked(extraCheckbox?.defaultChecked ?? false);
+    }
+  }
+
   if (!isOpen) return null;
 
   const confirmColor = {
@@ -51,15 +69,17 @@ const ConfirmDialog = ({
     ),
   }[type];
 
+  const handleConfirm = () => {
+    onConfirm(extraCheckbox ? checked : undefined);
+  };
+
   return (
     <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4 animate-in fade-in duration-200">
-      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/40 backdrop-blur-sm cursor-pointer"
         onClick={onCancel}
       />
 
-      {/* Dialog */}
       <div
         className="relative bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-200"
         style={{
@@ -67,18 +87,26 @@ const ConfirmDialog = ({
         }}
       >
         <div className="p-6">
-          {/* Icon */}
           <div className="flex justify-center mb-4">{icon}</div>
 
-          {/* Title */}
           <h3 className="text-xl font-bold text-gray-900 text-center mb-2">
             {title}
           </h3>
 
-          {/* Message */}
           <p className="text-gray-600 text-center mb-6">{message}</p>
 
-          {/* Actions */}
+          {extraCheckbox && (
+            <label className="flex items-center gap-2 mb-6 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors">
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={(e) => setChecked(e.target.checked)}
+                className="w-4 h-4 accent-teal-600 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 select-none">{extraCheckbox.label}</span>
+            </label>
+          )}
+
           <div className="flex gap-3">
             <button
               type="button"
@@ -89,7 +117,7 @@ const ConfirmDialog = ({
             </button>
             <button
               type="button"
-              onClick={onConfirm}
+              onClick={handleConfirm}
               className={`flex-1 px-4 py-3 rounded-xl font-semibold text-white ${confirmColor} transition-all shadow-lg cursor-pointer`}
             >
               {confirmText}

@@ -22,6 +22,7 @@ import { UnderDevelopmentPage } from "./pages/under-development.tsx";
 import { JapaneseFlashcardHome } from "./pages/learning/flashcard-home.tsx";
 import { JapaneseFlashcardStudy } from "./pages/learning/flashcard-study.tsx";
 import { JapaneseFlashcardUpload } from "./pages/learning/flashcard-upload.tsx";
+import { JapaneseFlashcardTestCreate } from "./pages/learning/flashcard-test-create.tsx";
 import { SettingsPage } from "./pages/settings/settings.tsx";
 import { BlogProvider } from "./stores/blog-store.tsx";
 import { AuthProvider } from "./contexts/AuthContext.tsx";
@@ -84,6 +85,14 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
                     <ProtectedRoute>
                       <JapaneseFlashcardUpload />
                     </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/learning/test-create"
+                  element={
+                    <AdminRoute>
+                      <JapaneseFlashcardTestCreate />
+                    </AdminRoute>
                   }
                 />
 

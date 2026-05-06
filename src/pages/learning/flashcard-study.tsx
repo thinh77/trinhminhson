@@ -9,12 +9,14 @@ import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   getVocabularySet,
   markFlashcardLearned,
+  incrementFlashcardDifficulty,
   resetVocabularySet,
   cloneVocabularySet,
   type VocabularySetWithFlashcards,
   type Flashcard as FlashcardType,
 } from "../../services/vocabulary.service";
 import Flashcard from "../../components/flashcard/Flashcard";
+import ConfirmDialog from "../../components/ui/confirm-dialog";
 import { useAuth } from "../../contexts/AuthContext";
 
 // SVG Icons
@@ -149,6 +151,7 @@ export function JapaneseFlashcardStudy() {
   const [cards, setCards] = useState<FlashcardType[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [learnedCount, setLearnedCount] = useState(0);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
   const isOwner = vocabSet?.is_owner !== false; // undefined => treat as owner for backward compatibility
   const isReadOnly = isGuest || !isOwner;
@@ -211,13 +214,18 @@ export function JapaneseFlashcardStudy() {
   const markNotLearnedAndNext = useCallback(() => {
     if (cards.length === 0) return;
 
+    const currentCard = cards[currentIndex];
+    incrementFlashcardDifficulty(currentCard.id).catch((err) => {
+      console.error("Failed to increment difficulty:", err);
+    });
+
     if (currentIndex < cards.length - 1) {
       setCurrentIndex((prev) => prev + 1);
     } else {
       setCurrentIndex(0);
     }
     setCurrentFace(defaultFace);
-  }, [cards.length, currentIndex, defaultFace]);
+  }, [cards, currentIndex, defaultFace]);
 
   // Guest-safe navigation: just move to next/prev card without any API calls
   const goToNextCard = useCallback(() => {
@@ -256,7 +264,11 @@ export function JapaneseFlashcardStudy() {
     setShuffled(true);
   }
 
-  async function resetAllCards() {
+  function openResetDialog() {
+    setResetDialogOpen(true);
+  }
+
+  async function confirmResetAllCards() {
     try {
       if (!setId) return;
       await resetVocabularySet(setId);
@@ -266,6 +278,8 @@ export function JapaneseFlashcardStudy() {
       setShuffled(false);
     } catch (err) {
       console.error("Failed to reset cards:", err);
+    } finally {
+      setResetDialogOpen(false);
     }
   }
 
@@ -452,7 +466,7 @@ export function JapaneseFlashcardStudy() {
             {/* Reset button - Only for owners */}
             {allLearned && !isReadOnly && (
               <button
-                onClick={resetAllCards}
+                onClick={openResetDialog}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-teal-500 to-emerald-500 
                            text-white font-semibold rounded-xl shadow-lg shadow-teal-500/30
                            hover:shadow-xl hover:-translate-y-0.5 transition-all cursor-pointer"
@@ -484,6 +498,17 @@ export function JapaneseFlashcardStudy() {
               </div>
             )}
           </div>
+
+          <ConfirmDialog
+            isOpen={resetDialogOpen}
+            title="Học lại từ đầu?"
+            message="Tất cả thẻ sẽ được đánh dấu là chưa thuộc."
+            confirmText="Xác nhận"
+            cancelText="Hủy"
+            type="warning"
+            onConfirm={() => confirmResetAllCards()}
+            onCancel={() => setResetDialogOpen(false)}
+          />
         </main>
       </div>
     );
@@ -759,9 +784,9 @@ export function JapaneseFlashcardStudy() {
           </button>
 
           <button
-            onClick={resetAllCards}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-200 
-                       text-red-600 font-medium rounded-xl hover:border-red-300 hover:bg-red-50 
+            onClick={openResetDialog}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-white border-2 border-red-200
+                       text-red-600 font-medium rounded-xl hover:border-red-300 hover:bg-red-50
                        transition-colors cursor-pointer"
             title="Đặt lại tất cả thẻ về chưa thuộc"
           >
@@ -770,6 +795,17 @@ export function JapaneseFlashcardStudy() {
           </button>
         </div>
       </main>
+
+      <ConfirmDialog
+        isOpen={resetDialogOpen}
+        title="Học lại từ đầu?"
+        message="Tất cả thẻ sẽ được đánh dấu là chưa thuộc."
+        confirmText="Xác nhận"
+        cancelText="Hủy"
+        type="warning"
+        onConfirm={() => confirmResetAllCards()}
+        onCancel={() => setResetDialogOpen(false)}
+      />
     </div>
   );
 }

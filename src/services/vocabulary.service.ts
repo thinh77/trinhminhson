@@ -34,6 +34,7 @@ export interface VocabularySet {
   created_at: string;
   updated_at: string;
   card_count: number;
+  difficult_count?: number;
 }
 
 export interface Flashcard {
@@ -50,6 +51,8 @@ export interface Flashcard {
   face9?: string;
   face10?: string;
   learned: number;
+  difficulty_score?: number;
+  root_card_id?: number;
   created_at: string;
 }
 
@@ -159,12 +162,44 @@ export async function markFlashcardLearned(
   return response.json();
 }
 
+export interface CreateTestSetPayload {
+  name: string;
+  sourceSetIds: number[];
+  wordCount: number;
+}
+
+export interface CreateTestSetResult {
+  setId: number;
+  cardCount: number;
+  requestedCount: number;
+  shortage: boolean;
+}
+
+export async function createTestSet(
+  payload: CreateTestSetPayload
+): Promise<CreateTestSetResult> {
+  return api.post<CreateTestSetResult>("/vocabulary/sets/test", payload);
+}
+
+export async function incrementFlashcardDifficulty(
+  id: number
+): Promise<{ difficulty_score: number }> {
+  return api.patch<{ difficulty_score: number }>(
+    `/vocabulary/flashcards/${id}/miss`,
+    {}
+  );
+}
+
 export async function resetVocabularySet(
   id: number | string
 ): Promise<{ message: string; count: number }> {
   const response = await fetch(`${API_BASE_URL}/vocabulary/sets/${id}/reset`, {
     method: "POST",
-    headers: getAuthHeaders(),
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders(),
+    },
+    body: JSON.stringify({}),
   });
 
   if (!response.ok) {

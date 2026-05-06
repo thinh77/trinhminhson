@@ -115,7 +115,7 @@ function Flashcard({
             {/* Content */}
             <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 overflow-auto">
               <p
-                className="text-center break-words leading-relaxed text-xl sm:text-2xl md:text-3xl lg:text-4xl font-medium text-gray-800"
+                className={`text-center break-words leading-relaxed font-medium text-gray-800 ${safeCurrentFace < 4 ? "text-[60px]" : "text-xl sm:text-2xl md:text-3xl lg:text-4xl"}`}
                 style={
                   isJapaneseContent
                     ? {
