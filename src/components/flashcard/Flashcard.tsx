@@ -15,6 +15,7 @@ interface FlashcardProps {
   onNextFace: () => void;
   onSetFace: (index: number) => void;
   showFaceIndicators?: boolean;
+  difficultyScore?: number;
 }
 
 function Flashcard({
@@ -24,6 +25,7 @@ function Flashcard({
   onNextFace,
   onSetFace,
   showFaceIndicators = true,
+  difficultyScore,
 }: FlashcardProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -137,6 +139,21 @@ function Flashcard({
             </div>
           </div>
         </div>
+
+        {/* Admin difficulty badge */}
+        {difficultyScore !== undefined && (
+          <div
+            className={`absolute top-2 right-2 z-10 px-2 py-0.5 rounded-full text-xs font-bold select-none ${
+              difficultyScore >= 4
+                ? "bg-red-100 text-red-700"
+                : difficultyScore >= 2
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            ⚡{difficultyScore}
+          </div>
+        )}
 
         {/* Decorative Elements */}
         <div

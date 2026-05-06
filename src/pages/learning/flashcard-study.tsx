@@ -135,7 +135,7 @@ const RefreshIcon = () => (
 export function JapaneseFlashcardStudy() {
   const { setId } = useParams<{ setId: string }>();
   const navigate = useNavigate();
-  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const isGuest = !authLoading && !isAuthenticated;
 
   const [vocabSet, setVocabSet] = useState<VocabularySetWithFlashcards | null>(
@@ -155,6 +155,7 @@ export function JapaneseFlashcardStudy() {
 
   const isOwner = vocabSet?.is_owner !== false; // undefined => treat as owner for backward compatibility
   const isReadOnly = isGuest || !isOwner;
+  const isAdmin = user?.role === "admin";
 
   async function loadVocabSet() {
     try {
@@ -215,7 +216,15 @@ export function JapaneseFlashcardStudy() {
     if (cards.length === 0) return;
 
     const currentCard = cards[currentIndex];
-    incrementFlashcardDifficulty(currentCard.id).catch((err) => {
+    incrementFlashcardDifficulty(currentCard.id).then((result) => {
+      setCards((prev) =>
+        prev.map((c) =>
+          c.id === currentCard.id
+            ? { ...c, difficulty_score: result.difficulty_score }
+            : c
+        )
+      );
+    }).catch((err) => {
       console.error("Failed to increment difficulty:", err);
     });
 
@@ -602,6 +611,7 @@ export function JapaneseFlashcardStudy() {
               onNextFace={nextFace}
               onSetFace={setFace}
               showFaceIndicators={false}
+              difficultyScore={isAdmin ? (currentCard.difficulty_score ?? 1) : undefined}
             />
           </div>
 
@@ -694,6 +704,7 @@ export function JapaneseFlashcardStudy() {
             faceCount={faceCount}
             onNextFace={nextFace}
             onSetFace={setFace}
+            difficultyScore={isAdmin ? (currentCard.difficulty_score ?? 1) : undefined}
           />
         </div>
 
